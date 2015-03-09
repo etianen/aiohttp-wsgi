@@ -7,10 +7,24 @@ aiohttp-wsgi
 Features
 --------
 
-- Run WSGI applications (e.g. Django, Flask) on aiohttp.
+- Run WSGI applications (e.g. Django, Flask) on `aiohttp <http://aiohttp.readthedocs.org>`_.
 - Handle thousands of client connections, using the latest evented Python networking library.
-- Applications are run in a thread pool, to avoid blocking the event loop.
-- Run websockets and blocking WSGI applications on the same network port!
+- Add `websockets <http://aiohttp.readthedocs.org/en/v0.14.4/web.html#websockets>`_ to your
+  existing Python webapp!
+
+
+Design
+------
+
+WSGI applications are run in an asyncio `executor <https://docs.python.org/3.4/library/asyncio-eventloop.html#executor>`_.
+This allows existing Python frameworks like Django and Flask to run normally without
+blocking the main event loop or resorting to hacks like monkey-patching the Python
+standard library. This enables you to write the majority of your application code in a safe,
+predictable environment.
+
+Asyncronous parts of your application (e.g. `websockets <http://aiohttp.readthedocs.org/en/v0.14.4/web.html#websockets>`_)
+can be run on the same network port, using the `aiohttp router <http://aiohttp.readthedocs.org/en/v0.14.4/web.html#run-a-simple-web-server>`_
+to switch between your WSGI app and asyncronous code.
 
 
 Installation
