@@ -1,0 +1,13 @@
+language: python
+sudo: false
+python:
+  - 3.3
+  - 3.4
+matrix:
+  fast_finish: true
+install:
+  - travis_retry pip install -e .[dev]
+script: 
+  - nosetests --cover-package=aiohttp-wsgi --cover-erase --with-coverage
+notifications:
+  email: false
