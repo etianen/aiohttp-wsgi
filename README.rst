@@ -8,7 +8,7 @@ Features
 --------
 
 - Run WSGI applications (e.g. Django, Flask) on `aiohttp <http://aiohttp.readthedocs.org>`_.
-- Handle thousands of client connections, using the latest evented Python networking library.
+- Handle thousands of client connections, using the latest `evented networking library <https://docs.python.org/3.4/library/asyncio.html>`_.
 - Add `websockets <http://aiohttp.readthedocs.org/en/v0.14.4/web.html#websockets>`_ to your
   existing Python webapp!
 
