@@ -164,24 +164,24 @@ class WSGIResponse:
         # Return the stream writer interface.
         return self.write_threadsafe
 
-    def _write_headers(self):
+    def _write_head(self):
         assert self._response, "Application did not call start_response()"
         if not self._response.started:
             self._response.start(self._request)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
-        self._write_headers()
+        self._write_head()
         self._response.write(data)
 
     @asyncio.coroutine
     def drain(self):
-        self._write_headers()
+        self._write_head()
         yield from self._response.drain()
 
     @asyncio.coroutine
     def write_eof(self):
-        self._write_headers()
+        self._write_head()
         yield from self._response.write_eof()
 
     def write_threadsafe(self, data):
