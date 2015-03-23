@@ -18,6 +18,7 @@ def configure_server(application, *,
     unix_socket_perms = 0o600,
 
     # aiohttp config.
+    routes = (),
     static = (),
 
     # Asyncio config.
@@ -38,6 +39,9 @@ def configure_server(application, *,
         loop = loop,
         middlewares = [wsgi_middleware],
     )
+    # Add routes.
+    for method, path, handler in routes:
+        app.router.add_route(method, path, handler)
     # Add static routes.
     if isinstance(static, Mapping):
         static = static.items()
