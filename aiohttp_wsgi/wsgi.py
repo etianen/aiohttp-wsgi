@@ -123,6 +123,7 @@ class WSGIHandler:
             # Close the body.
             if hasattr(body_iterable, "close"):
                 yield from self._run_in_executor(body_iterable.close)
+        return response._response
 
 
 class WSGIResponse:
