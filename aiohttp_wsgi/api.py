@@ -28,6 +28,10 @@ def configure_server(application, *,
     **kwargs
 
 ):
+
+    _backlog = kwargs.pop("backlog") if "backlog" in kwargs else 512
+    _socket = kwargs.pop("socket") if "socket" in kwargs else None
+
     loop = loop or asyncio.get_event_loop()
     # Create the WSGI handler.
     wsgi_middleware = middleware.wsgi(application,
@@ -53,10 +57,17 @@ def configure_server(application, *,
             path = unix_socket,
         )
     else:
-        server_future = loop.create_server(app.make_handler(),
-            host = host,
-            port = port,
-        )
+        if _socket:
+            server_future = loop.create_server(app.make_handler(),
+                backlog = _backlog,
+                sock = _socket
+            )
+        else:
+            server_future = loop.create_server(app.make_handler(),
+                host = host,
+                port = port,
+                backlog = _backlog
+            )
     server = loop.run_until_complete(server_future)
     app.logger.info("Serving on http://%s:%s", *parse_sockname(server.sockets[0].getsockname()))
     # Set socket permissions.
