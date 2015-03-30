@@ -1,4 +1,4 @@
-import sys, tempfile, os
+import sys, tempfile, os, socket
 from contextlib import closing
 from unittest import TestCase
 
@@ -242,6 +242,22 @@ class WSGITest(TestCase):
         with run_server(application, unix_socket=unix_socket) as client:
             with client.raw_request("GET", "http://127.0.0.1:8080", connector=UnixConnector(unix_socket)) as response:
                 self.assertEqual(response.status, 200)
+
+    # Preexisting sockets.
+
+    def testPreexistingSocket(self):
+        def application(environ, start_response):
+            self.assertEqual(environ["SERVER_NAME"], "127.0.0.1")
+            self.assertEqual(environ["SERVER_PORT"], str(client.server_port))
+            start_response("200 OK", [
+                ("Content-Type", "text/html; charse=utf-8"),
+            ])
+            return [b"Hello world"]
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as server_socket:
+            server_socket.bind(("127.0.0.1", 0))
+            with run_server(application, socket=server_socket) as client:
+                with client.request("GET", "/") as response:
+                    self.assertEqual(response.status, 200)
 
     # Static files.
 

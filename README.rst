@@ -84,6 +84,12 @@ High-level factory method that wraps a WSGI application in an asyncio `server <h
 ``unix_socket_perms``
     A set of filesystem permissions to apply to the unix socket. Defaults to ``0o600``.
 
+``socket``
+    A preexisting socket object to use for the server. Overrides ``host``.
+
+``backlog``
+    The maximum number of queued connections for the socket. Defaults to ``1024``.
+
 ``routes``
     A list of ``(method, path, handler)`` routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.14.4/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
 

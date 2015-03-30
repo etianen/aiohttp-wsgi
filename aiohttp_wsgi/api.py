@@ -17,6 +17,12 @@ def configure_server(application, *,
     unix_socket = None,
     unix_socket_perms = 0o600,
 
+    # Prexisting socket config.
+    socket = None,
+
+    # Shared server config.
+    backlog = 1024,
+
     # aiohttp config.
     routes = (),
     static = (),
@@ -48,14 +54,24 @@ def configure_server(application, *,
     for path, dirname in static:
         app.router.add_static(path, dirname)
     # Set up the server.
+    shared_server_kwargs = {
+        "backlog": backlog,
+    }
     if unix_socket is not None:
         server_future = loop.create_unix_server(app.make_handler(),
             path = unix_socket,
+            **shared_server_kwargs
+        )
+    elif socket is not None:
+        server_future = loop.create_server(app.make_handler(),
+            sock = socket,
+            **shared_server_kwargs
         )
     else:
         server_future = loop.create_server(app.make_handler(),
             host = host,
             port = port,
+            **shared_server_kwargs
         )
     server = loop.run_until_complete(server_future)
     app.logger.info("Serving on http://%s:%s", *parse_sockname(server.sockets[0].getsockname()))
