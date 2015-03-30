@@ -3,6 +3,7 @@ from contextlib import closing
 from unittest import TestCase
 
 from aiohttp.connector import UnixConnector
+from aiohttp.web import Response
 
 from aiohttp_wsgi.test import run_server
 
@@ -258,6 +259,24 @@ class WSGITest(TestCase):
             with run_server(application, socket=server_socket) as client:
                 with client.request("GET", "/") as response:
                     self.assertEqual(response.status, 200)
+
+    # Custom routes.
+
+    def testRoutes(self):
+        def application(environ, start_response):
+            start_response("200 OK", [
+                ("Content-Type", "text/html; charse=utf-8"),
+            ])
+            return [b"Hello world"]
+        def handler(request):
+            return Response(body=b"aiohttp handler")
+        with run_server(application, routes=[("GET", "/foo", handler)]) as client:
+            with client.request("GET", "/") as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.text(), "Hello world")
+            with client.request("GET", "/foo") as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.text(), "aiohttp handler")
 
     # Static files.
 
