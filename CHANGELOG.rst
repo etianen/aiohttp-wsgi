@@ -2,6 +2,13 @@ aiohttp-wsgi changelog
 ======================
 
 
+0.1.2
+-----
+
+- Added `socket` argument to `serve()` and `configure_server()`.
+- Added `backlog` argument to `serve()` and `configure_server()`.
+
+
 0.1.1
 -----
 
