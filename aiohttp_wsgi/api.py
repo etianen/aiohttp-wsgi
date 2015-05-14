@@ -3,7 +3,7 @@ from collections.abc import Mapping
 
 from aiohttp.web import Application
 
-from aiohttp_wsgi import middleware
+from aiohttp_wsgi.wsgi import WSGIHandler
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -31,19 +31,13 @@ def configure_server(application, *,
     loop = None,
 
     # Handler config.
+    script_name = "",
     **kwargs
 
 ):
     loop = loop or asyncio.get_event_loop()
-    # Create the WSGI handler.
-    wsgi_middleware = middleware.wsgi(application,
-        loop = loop,
-        **kwargs
-    )
-    # Wrap the application in an executor.
     app = Application(
         loop = loop,
-        middlewares = [wsgi_middleware],
     )
     # Add routes.
     for method, path, handler in routes:
@@ -53,6 +47,8 @@ def configure_server(application, *,
         static = static.items()
     for path, dirname in static:
         app.router.add_static(path, dirname)
+    # Add the wsgi application. This has to be last.
+    app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs))
     # Set up the server.
     shared_server_kwargs = {
         "backlog": backlog,

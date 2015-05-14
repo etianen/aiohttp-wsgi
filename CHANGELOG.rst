@@ -2,6 +2,12 @@ aiohttp-wsgi changelog
 ======================
 
 
+0.2.0
+-----
+
+- Removed WSGI middleware in favor of WSGIHandler.
+
+
 0.1.2
 -----
 

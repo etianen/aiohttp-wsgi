@@ -15,7 +15,6 @@ class WSGIHandler:
     def __init__(self, application, *,
 
         # Handler config.
-        script_name = "",
         url_scheme = None,
         stderr = sys.stderr,
 
@@ -26,7 +25,6 @@ class WSGIHandler:
         ):
         self._application = application
         # Handler config.
-        self._script_name = script_name
         self._url_scheme = url_scheme
         self._stderr = stderr
         # asyncio config.
@@ -58,9 +56,8 @@ class WSGIHandler:
     @asyncio.coroutine
     def _get_environ(self, request):
         # Resolve the path info.
-        path_info = request.path
-        if path_info.startswith(self._script_name):
-            path_info = path_info[len(self._script_name):]
+        path_info = request.match_info["path_info"]
+        script_name = request.path[:-len(path_info)]
         # Read the body.
         body = (yield from request.read())
         # Parse the connection info.
@@ -73,7 +70,7 @@ class WSGIHandler:
         # Create the environ.
         environ = {
             "REQUEST_METHOD": request.method,
-            "SCRIPT_NAME": self._script_name,
+            "SCRIPT_NAME": script_name,
             "PATH_INFO": path_info,
             "QUERY_STRING": request.query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),

@@ -23,7 +23,7 @@ Usage
 -----
 
 
-``middleware.wsgi(application, **kwargs)``
+``WSGIHandler(application, **kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `Middleware factory <http://aiohttp.readthedocs.org/en/v0.14.4/web.html#middlewares>`_ that wraps a WSGI application for use inside an aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.14.4/web_reference.html#aiohttp.web.Application>`_.
@@ -31,18 +31,14 @@ Usage
 ::
     
     from aiohttp.web import Application
-    from aiohttp_wsgi.middleware import wsgi
+    from aiohttp_wsgi import WSGIHandler
     from your_app.wsgi import application
 
-    aiohttp_application = Application(middlewares=[
-        wsgi(application),
-    ])
+    aiohttp_application = Application()
+    aiohttp_application.router.add_route("*", "{path_info:.*}")
 
 
 **Available arguments:**
-
-``script_name``
-    The URL prefix to mount the WSGI application. Corresponds to ``environ["SCRIPT_NAME"]``. This should **not** end with a slash. Defaults to ``""``.
 
 ``url_scheme``
     hint about the URL scheme used to access the application. Corresponds to ``environ["wsgi.uri_scheme"]``. Default value auto-detected to ``"http"`` or ``"https"``.
@@ -95,6 +91,9 @@ High-level factory method that wraps a WSGI application in an asyncio `server <h
 
 ``static``
     A list of ``(path, dirname)`` static routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.14.4/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
+
+``script_name``
+    The URL prefix to mount the WSGI application. Corresponds to ``environ["SCRIPT_NAME"]``. This should **not** end with a slash. Defaults to ``""``.
 
 
 ``configure_server()`` also accepts all arguments available to ``middleware.wsgi()``.
