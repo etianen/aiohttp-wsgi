@@ -5,7 +5,8 @@ aiohttp-wsgi changelog
 0.2.0
 -----
 
-- Removed WSGI middleware in favor of WSGIHandler.
+- **BREAKING**: Removed WSGI middleware in favor of WSGIHandler (required to support aiohttp 0.15.0 without hacks).
+- Added support for aiohttp 0.15.0.
 
 
 0.1.2
