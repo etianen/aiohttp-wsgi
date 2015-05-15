@@ -76,8 +76,8 @@ class WSGIHandler:
         return environ
 
     def _run_application(self, environ, response):
-        body_iterable = self._application(environ, response.start_response)
         try:
+            body_iterable = self._application(environ, response.start_response)
             try:
                 # Run through all the data.
                 for data in body_iterable:

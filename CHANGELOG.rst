@@ -5,6 +5,7 @@ aiohttp-wsgi changelog
 0.2.1
 -----
 
+- Added `on_finish` parameter to `serve()` and `configure_server()`.
 - Improved performance and predictability of processing streaming iterators from WSGI applications.
 
 
