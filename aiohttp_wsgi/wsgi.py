@@ -1,5 +1,5 @@
-import asyncio, io, sys, threading
-from contextlib import contextmanager
+import asyncio, io, sys
+from functools import partial
 from wsgiref.util import is_hop_by_hop
 
 from aiohttp.web import StreamResponse
@@ -30,28 +30,9 @@ class WSGIHandler:
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
-        # The write lock mechanism.
-        self._write_lock = threading.Lock()
-        self._write_ready = threading.Event()
 
-    def _pause_loop(self):
-        self._write_ready.set()
-        with self._write_lock:
-            self._write_ready.clear()
-
-    @contextmanager
-    def _lock_for_write(self):
-        with self._write_lock:
-            # Have the event loop signal it's ready to pause, and then
-            # wait for the write lock again.
-            self._loop.call_soon_threadsafe(self._pause_loop)
-            # Write the data when the write is ready.
-            self._write_ready.wait()
-            yield
-
-    @asyncio.coroutine
-    def _run_in_executor(self, task, *args):
-        return (yield from self._loop.run_in_executor(self._executor, task, *args))
+    def call_soon_threadsafe(self, callback, *args, **kwargs):
+        self._loop.call_soon_threadsafe(partial(callback, **kwargs), *args)
 
     @asyncio.coroutine
     def _get_environ(self, request):
@@ -98,40 +79,41 @@ class WSGIHandler:
         # All done!
         return environ
 
+    def _run_application(self, environ, response):
+        body_iterable = self._application(environ, response.start_response)
+        try:
+            try:
+                # Run through all the data.
+                for data in body_iterable:
+                    response.write(data)
+            finally:
+                # Close the body.
+                if hasattr(body_iterable, "close"):
+                    body_iterable.close()
+        finally:
+            response.write_eof()
+
     @asyncio.coroutine
     def __call__(self, request):
         environ = (yield from self._get_environ(request))
         response = WSGIResponse(self, request)
-        body_iterable = (yield from self._run_in_executor(self._application, environ, response.start_response))
-        try:
-            body_iter = iter(body_iterable)
-            # Run through all the data.
-            while True:
-                data = (yield from self._run_in_executor(next, body_iter, EMPTY))
-                if data is EMPTY:
-                    break
-                if data:
-                    response.write(data)
-                    yield from response.drain()
-            # Drain the response.
-            yield from response.write_eof()
-            yield from response.drain()
-        finally:
-            # Close the body.
-            if hasattr(body_iterable, "close"):
-                yield from self._run_in_executor(body_iterable.close)
+        yield from self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+        # Wait for all write callbacks to complete before finishing the request.
+        yield from response._response_complete.wait()
         return response._response
 
 
 class WSGIResponse:
 
-    __slots__ = ("_handler", "_request", "_response",)
+    __slots__ = ("_handler", "_request", "_response", "_response_started", "_response_complete",)
 
     def __init__(self, handler, request):
         self._handler = handler
         self._request = request
         # State.
         self._response = None
+        self._response_started = False
+        self._response_complete = asyncio.Event()
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info:
@@ -139,7 +121,7 @@ class WSGIResponse:
             self._request.app.logger.error("Unexpected error", exc_info=exc_info)
             # Attempt to modify the response.
             try:
-                if self._response and self._response.started:
+                if self._response and self._response_started:
                     raise exc_info[1].with_traceback(exc_info[2])
                 self._response = None
             finally:
@@ -160,28 +142,20 @@ class WSGIResponse:
             assert not is_hop_by_hop(header_name), "Hop-by-hop headers are forbidden"
             self._response.headers.add(header_name, header_value)
         # Return the stream writer interface.
-        return self.write_threadsafe
+        return self.write        
 
     def _write_head(self):
         assert self._response, "Application did not call start_response()"
-        if not self._response.started:
-            self._response.start(self._request)
+        if not self._response_started:
+            self._response_started = True
+            self._handler.call_soon_threadsafe(self._response.start, self._request)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
-        self._write_head()
-        self._response.write(data)
+        if data:
+            self._write_head()
+            self._handler.call_soon_threadsafe(self._response.write, data)
 
-    @asyncio.coroutine
-    def drain(self):
-        self._write_head()
-        yield from self._response.drain()
-
-    @asyncio.coroutine
     def write_eof(self):
         self._write_head()
-        yield from self._response.write_eof()
-
-    def write_threadsafe(self, data):
-        with self._handler._lock_for_write():
-            self.write(data)
+        self._handler.call_soon_threadsafe(self._response_complete.set)
