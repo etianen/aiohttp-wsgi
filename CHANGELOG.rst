@@ -2,6 +2,12 @@ aiohttp-wsgi changelog
 ======================
 
 
+0.2.1
+-----
+
+- Improved performance and predictability of processing streaming iterators from WSGI applications.
+
+
 0.2.0
 -----
 
