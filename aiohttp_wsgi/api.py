@@ -26,6 +26,7 @@ def configure_server(application, *,
     # aiohttp config.
     routes = (),
     static = (),
+    on_finish = (),
 
     # Asyncio config.
     loop = None,
@@ -47,6 +48,9 @@ def configure_server(application, *,
         static = static.items()
     for path, dirname in static:
         app.router.add_static(path, dirname)
+    # Add on finish callbacks.
+    for on_finish_callback in on_finish:
+        app.register_on_finish(on_finish_callback)
     # Add the wsgi application. This has to be last.
     app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs))
     # Set up the server.
