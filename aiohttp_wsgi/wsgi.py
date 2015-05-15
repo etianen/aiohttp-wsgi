@@ -1,5 +1,4 @@
-import asyncio, io, sys
-from functools import partial
+import asyncio, io, sys, threading
 from wsgiref.util import is_hop_by_hop
 
 from aiohttp.web import StreamResponse
@@ -30,9 +29,6 @@ class WSGIHandler:
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
-
-    def call_soon_threadsafe(self, callback, *args, **kwargs):
-        self._loop.call_soon_threadsafe(partial(callback, **kwargs), *args)
 
     @asyncio.coroutine
     def _get_environ(self, request):
@@ -98,22 +94,19 @@ class WSGIHandler:
         environ = (yield from self._get_environ(request))
         response = WSGIResponse(self, request)
         yield from self._loop.run_in_executor(self._executor, self._run_application, environ, response)
-        # Wait for all write callbacks to complete before finishing the request.
-        yield from response._response_complete.wait()
         return response._response
 
 
 class WSGIResponse:
 
-    __slots__ = ("_handler", "_request", "_response", "_response_started", "_response_complete",)
+    __slots__ = ("_handler", "_request", "_response", "_write_complete",)
 
     def __init__(self, handler, request):
         self._handler = handler
         self._request = request
         # State.
         self._response = None
-        self._response_started = False
-        self._response_complete = asyncio.Event()
+        self._write_complete = threading.Event()
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info:
@@ -121,7 +114,7 @@ class WSGIResponse:
             self._request.app.logger.error("Unexpected error", exc_info=exc_info)
             # Attempt to modify the response.
             try:
-                if self._response and self._response_started:
+                if self._response and self._response.started:
                     raise exc_info[1].with_traceback(exc_info[2])
                 self._response = None
             finally:
@@ -142,20 +135,28 @@ class WSGIResponse:
             assert not is_hop_by_hop(header_name), "Hop-by-hop headers are forbidden"
             self._response.headers.add(header_name, header_value)
         # Return the stream writer interface.
-        return self.write        
+        return self.write
+
+    def _call_soon_threadsafe(self, callback, *args, **kwargs):
+        def run_callback():
+            try:
+                callback(*args, **kwargs)
+            finally:
+                self._write_complete.set()
+        self._write_complete.clear()
+        self._handler._loop.call_soon_threadsafe(run_callback)
+        self._write_complete.wait()
 
     def _write_head(self):
         assert self._response, "Application did not call start_response()"
-        if not self._response_started:
-            self._response_started = True
-            self._handler.call_soon_threadsafe(self._response.start, self._request)
+        if not self._response.started:
+            self._call_soon_threadsafe(self._response.start, self._request)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
         if data:
             self._write_head()
-            self._handler.call_soon_threadsafe(self._response.write, data)
+            self._call_soon_threadsafe(self._response.write, data)
 
     def write_eof(self):
         self._write_head()
-        self._handler.call_soon_threadsafe(self._response_complete.set)
