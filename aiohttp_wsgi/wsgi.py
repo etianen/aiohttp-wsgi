@@ -76,18 +76,18 @@ class WSGIHandler:
         return environ
 
     def _run_application(self, environ, response):
+        body_iterable = self._application(environ, response.start_response)
         try:
-            body_iterable = self._application(environ, response.start_response)
-            try:
-                # Run through all the data.
-                for data in body_iterable:
-                    response.write(data)
-            finally:
-                # Close the body.
-                if hasattr(body_iterable, "close"):
-                    body_iterable.close()
-        finally:
+            # Run through all the data.
+            for data in body_iterable:
+                response.write(data)
+            # Finish the response.
             response.write_eof()
+        finally:
+            # Close the body.
+            if hasattr(body_iterable, "close"):
+                body_iterable.close()
+            
 
     @asyncio.coroutine
     def __call__(self, request):
