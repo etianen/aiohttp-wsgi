@@ -2,6 +2,13 @@ aiohttp-wsgi changelog
 ======================
 
 
+0.2.2
+-----
+
+- Implemented a standalone concurrent utility module for switching between the event loop and an executor.
+  See ``aiohttp_wsgi.concurrent`` module for more info.
+
+
 0.2.1
 -----
 

@@ -8,6 +8,8 @@ From within the event loop:
 From within an executor:
 
     concurrent.run_in_loop(func, *args)
+
+This API is currently unstable, and may be subject to change.
 """
 import threading, asyncio
 from functools import wraps
