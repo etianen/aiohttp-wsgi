@@ -190,7 +190,6 @@ class WSGITest(TestCase):
                 self.assertEqual(response.status, 500)
 
     def testApplicationCalledStartResponseTwice(self):
-        print("FOO")
         def application(environ, start_response):
             start_response("200 OK", [
                 ("Content-Type", "text/html; charse=utf-8"),

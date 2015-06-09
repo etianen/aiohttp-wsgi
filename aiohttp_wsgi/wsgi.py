@@ -1,9 +1,10 @@
-import asyncio, io, sys, threading
+import asyncio, io, sys
 from wsgiref.util import is_hop_by_hop
 
 from aiohttp.web import StreamResponse
 
 from aiohttp_wsgi.utils import parse_sockname
+from aiohttp_wsgi.concurrent import run_in_executor, run_in_loop
 
 
 EMPTY = object()
@@ -93,20 +94,19 @@ class WSGIHandler:
     def __call__(self, request):
         environ = (yield from self._get_environ(request))
         response = WSGIResponse(self, request)
-        yield from self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+        yield from run_in_executor(self._run_application, environ, response, loop=self._loop, executor=self._executor)
         return response._response
 
 
 class WSGIResponse:
 
-    __slots__ = ("_handler", "_request", "_response", "_write_complete",)
+    __slots__ = ("_handler", "_request", "_response",)
 
     def __init__(self, handler, request):
         self._handler = handler
         self._request = request
         # State.
         self._response = None
-        self._write_complete = threading.Event()
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info:
@@ -137,26 +137,16 @@ class WSGIResponse:
         # Return the stream writer interface.
         return self.write
 
-    def _call_soon_threadsafe(self, callback, *args, **kwargs):
-        def run_callback():
-            try:
-                callback(*args, **kwargs)
-            finally:
-                self._write_complete.set()
-        self._write_complete.clear()
-        self._handler._loop.call_soon_threadsafe(run_callback)
-        self._write_complete.wait()
-
     def _write_head(self):
         assert self._response, "Application did not call start_response()"
         if not self._response.started:
-            self._call_soon_threadsafe(self._response.start, self._request)
+            run_in_loop(self._response.start, self._request)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
         if data:
             self._write_head()
-            self._call_soon_threadsafe(self._response.write, data)
+            run_in_loop(self._response.write, data)
 
     def write_eof(self):
         self._write_head()
