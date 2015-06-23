@@ -14,9 +14,10 @@ setup(
         "aiohttp>=0.15.0",
     ],
     extras_require = {
-        "dev":  [
-            "nose",
-            "coverage",
+        "test":  [
+            "pytest",
+            "pytest-cov",
+            "pytest-asyncio",
         ],
     },
     classifiers = [

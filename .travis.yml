@@ -6,8 +6,8 @@ python:
 matrix:
   fast_finish: true
 install:
-  - travis_retry pip install -e .[dev]
+  - travis_retry pip install -e .[test]
 script: 
-  - nosetests --cover-package=aiohttp_wsgi --cover-erase --with-coverage
+  - py.test tests --cov=aiohttp_wsgi --cov-report=term-missing
 notifications:
   email: false

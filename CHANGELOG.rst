@@ -1,6 +1,11 @@
 aiohttp-wsgi changelog
 ======================
 
+0.2.3
+-----
+
+- Fixed bug with parsing SCRIPT_NAME.
+
 
 0.2.2
 -----

@@ -35,7 +35,7 @@ class WSGIHandler:
     def _get_environ(self, request):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
-        script_name = request.path[:-len(path_info)]
+        script_name = request.path[:len(request.path)-len(path_info)]
         # Read the body.
         body = (yield from request.read())
         # Parse the connection info.
