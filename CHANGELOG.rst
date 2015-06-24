@@ -1,6 +1,12 @@
 aiohttp-wsgi changelog
 ======================
 
+0.2.4
+-----
+
+- Workaround for error in asyncio debug mode on some Python versions when using a callable object, `WSGIHandler.handle_request`.
+
+
 0.2.3
 -----
 
