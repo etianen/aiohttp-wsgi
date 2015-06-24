@@ -3,6 +3,10 @@ sudo: false
 python:
   - 3.3
   - 3.4
+env:
+  global:
+    - PYTHONWARNINGS=default
+    - PYTHONASYNCIODEBUG=1
 matrix:
   fast_finish: true
 install:

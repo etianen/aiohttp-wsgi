@@ -1,5 +1,3 @@
-import warnings
-
 import pytest
 
 import aiohttp
@@ -55,29 +53,24 @@ def on_finish():
 
 @pytest.yield_fixture
 def server(event_loop, unused_tcp_port, application, script_name, url_scheme, unix_socket, socket, routes, static, on_finish):
-    # Set up debug warnings.
-    with warnings.catch_warnings():
-        warnings.simplefilter("default", ResourceWarning)
-        # Use asyncio debug.
-        event_loop.set_debug(True)
-        # Create a server.
-        server, app = configure_server(application,
-            host = "127.0.0.1",
-            port = unused_tcp_port,
-            loop = event_loop,
-            script_name = script_name,
-            url_scheme = url_scheme,
-            unix_socket = unix_socket,
-            socket = socket,
-            routes = routes,
-            static = static,
-            on_finish = on_finish,
-        )
-        # Create a client.
-        try:
-            yield server
-        finally:
-            close_server(server, app, loop=event_loop)
+    # Create a server.
+    server, app = configure_server(application,
+        host = "127.0.0.1",
+        port = unused_tcp_port,
+        loop = event_loop,
+        script_name = script_name,
+        url_scheme = url_scheme,
+        unix_socket = unix_socket,
+        socket = socket,
+        routes = routes,
+        static = static,
+        on_finish = on_finish,
+    )
+    # Create a client.
+    try:
+        yield server
+    finally:
+        close_server(server, app, loop=event_loop)
 
 @pytest.fixture
 def request_method():
