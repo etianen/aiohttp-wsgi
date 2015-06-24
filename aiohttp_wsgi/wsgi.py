@@ -88,7 +88,6 @@ class WSGIHandler:
             # Close the body.
             if hasattr(body_iterable, "close"):
                 body_iterable.close()
-            
 
     @asyncio.coroutine
     def __call__(self, request):

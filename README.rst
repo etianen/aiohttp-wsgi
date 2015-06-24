@@ -35,7 +35,7 @@ Usage
     from your_app.wsgi import application
 
     aiohttp_application = Application()
-    aiohttp_application.router.add_route("*", "{path_info:.*}")
+    aiohttp_application.router.add_route("*", "{path_info:.*}", WSGIHandler(application))
 
 
 **Available arguments:**
