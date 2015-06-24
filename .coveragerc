@@ -7,9 +7,3 @@ exclude_lines =
     raise AssertionError
     raise NotImplementedError
     assert False
-
-omit =
-    */venv/*
-    */virtualenv/*
-
-show_missing = True
