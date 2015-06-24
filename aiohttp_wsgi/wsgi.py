@@ -97,7 +97,7 @@ class WSGIHandler:
         return response._response
 
     @asyncio.coroutine
-    def __call__(self, request):
+    def __call__(self, request):  # pragma: no cover
         return (yield from self.handle_request(request))
 
 
