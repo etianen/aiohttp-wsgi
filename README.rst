@@ -93,7 +93,7 @@ High-level factory method that wraps a WSGI application in an asyncio `server <h
     A list of ``(path, dirname)`` static routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
 
 ``on_finish``
-    A list of zero-argument callbacks to be executed when the server shuts down.
+    A list of callbacks to be executed when the server shuts down. Each callback will be passed the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_.
 
 ``script_name``
     The URL prefix to mount the WSGI application. Corresponds to ``environ["SCRIPT_NAME"]``. This should **not** end with a slash. Defaults to ``""``.
