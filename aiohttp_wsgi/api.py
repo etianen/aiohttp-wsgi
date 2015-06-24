@@ -52,7 +52,7 @@ def configure_server(application, *,
     for on_finish_callback in on_finish:
         app.register_on_finish(on_finish_callback)
     # Add the wsgi application. This has to be last.
-    app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs))
+    app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs).handle_request)
     # Set up the server.
     shared_server_kwargs = {
         "backlog": backlog,

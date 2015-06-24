@@ -90,11 +90,15 @@ class WSGIHandler:
                 body_iterable.close()
 
     @asyncio.coroutine
-    def __call__(self, request):
+    def handle_request(self, request):
         environ = (yield from self._get_environ(request))
         response = WSGIResponse(self, request)
         yield from run_in_executor(self._run_application, environ, response, loop=self._loop, executor=self._executor)
         return response._response
+
+    @asyncio.coroutine
+    def __call__(self, request):
+        return (yield from self.handle_request(request))
 
 
 class WSGIResponse:
