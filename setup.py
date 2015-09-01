@@ -11,7 +11,7 @@ setup(
     url = "https://github.com/etianen/aiohttp-wsgi",
     packages = find_packages(),
     install_requires = [
-        "aiohttp>=0.15.0",
+        "aiohttp>=0.17.0",
     ],
     extras_require = {
         "test":  [

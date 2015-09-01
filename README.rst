@@ -29,13 +29,13 @@ Usage
 `Handler <http://aiohttp.readthedocs.org/en/v0.15.3/web.html#handler>`_ that wraps a WSGI application for use inside an aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_.
 
 ::
-    
+
     from aiohttp.web import Application
     from aiohttp_wsgi import WSGIHandler
     from your_app.wsgi import application
 
     aiohttp_application = Application()
-    aiohttp_application.router.add_route("*", "{path_info:.*}", WSGIHandler(application))
+    aiohttp_application.router.add_route("*", "/{path_info:.*}", WSGIHandler(application))
 
 
 **Available arguments:**
@@ -148,13 +148,13 @@ Support and announcements
 Downloads and bug tracking can be found at the `main project
 website <http://github.com/etianen/aiohttp-wsgi>`_.
 
-    
+
 More information
 ----------------
 
 The aiohttp-wsgi project was developed by Dave Hall. You can get the code
 from the `aiohttp-wsgi project site <http://github.com/etianen/aiohttp-wsgi>`_.
-    
+
 Dave Hall is a freelance web developer, based in Cambridge, UK. You can usually
 find him on the Internet in a number of different places:
 

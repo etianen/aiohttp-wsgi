@@ -33,6 +33,15 @@ class WSGIHandler:
         # Resolve the path info.
         path_info = request.match_info["path_info"]
         script_name = request.path[:len(request.path)-len(path_info)]
+        # Special case: If the app was mounted on the root, then the script name will
+        # currently be set to "/", which is illegal in the WSGI spec. The script name
+        # could also end with a slash if the WSGIHandler was mounted as a route
+        # manually with a trailing slash before the path_info. In either case, we
+        # correct this according to the WSGI spec by transferring the trailing slash
+        # from script_name to the start of path_info.
+        if script_name.endswith("/"):
+            script_name = script_name[:-1]
+            path_info = "/" + path_info
         # Read the body.
         body = (yield from request.read())
         # Parse the connection info.

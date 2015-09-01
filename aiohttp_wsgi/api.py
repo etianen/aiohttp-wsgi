@@ -51,6 +51,15 @@ def configure_server(application, *,
     # Add on finish callbacks.
     for on_finish_callback in on_finish:
         app.register_on_finish(on_finish_callback)
+    # The WSGI spec says that script name should not end with a slash. However,
+    # aiohttp wants all route paths to start with a forward slash. This means
+    # we need a special case for mounting on the root.
+    if script_name.endswith("/"):  # pragma: no cover
+        raise ValueError("Script name should not end with /")
+    if script_name == "":
+        script_name = "/"
+    if not script_name.startswith("/"):  # pragma: no cover
+        raise ValueError("Script name should start with /")
     # Add the wsgi application. This has to be last.
     app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs).handle_request)
     # Set up the server.
