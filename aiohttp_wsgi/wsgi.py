@@ -7,9 +7,6 @@ from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.concurrent import run_in_executor, run_in_loop
 
 
-EMPTY = object()
-
-
 class WSGIHandler:
 
     def __init__(self, application, *,
