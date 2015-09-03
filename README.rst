@@ -9,7 +9,7 @@ Features
 
 - Run WSGI applications (e.g. Django, Flask) on `aiohttp <http://aiohttp.readthedocs.org>`_.
 - Handle thousands of client connections, using the latest `evented networking library <https://docs.python.org/3.4/library/asyncio.html>`_.
-- Add `websockets <http://aiohttp.readthedocs.org/en/v0.15.3/web.html#websockets>`_ to your
+- Add `websockets <http://aiohttp.readthedocs.org/en/latest/web.html#websockets>`_ to your
   existing Python app!
 
 
@@ -26,7 +26,7 @@ Usage
 ``WSGIHandler(application, **kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Handler <http://aiohttp.readthedocs.org/en/v0.15.3/web.html#handler>`_ that wraps a WSGI application for use inside an aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_.
+`Handler <http://aiohttp.readthedocs.org/en/latest/web.html#handler>`_ that wraps a WSGI application for use inside an aiohttp `Application <http://aiohttp.readthedocs.org/en/latest/web_reference.html#aiohttp.web.Application>`_.
 
 ::
 
@@ -57,7 +57,7 @@ Usage
 ``configure_server(application, **kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-High-level factory method that wraps a WSGI application in an asyncio `server <https://docs.python.org/3.4/library/asyncio-eventloop.html#server>`_ and aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_.
+High-level factory method that wraps a WSGI application in an asyncio `server <https://docs.python.org/3.4/library/asyncio-eventloop.html#server>`_ and aiohttp `Application <http://aiohttp.readthedocs.org/en/latest/web_reference.html#aiohttp.web.Application>`_.
 
 ::
 
@@ -88,13 +88,13 @@ High-level factory method that wraps a WSGI application in an asyncio `server <h
     The maximum number of queued connections for the socket. Defaults to ``1024``.
 
 ``routes``
-    A list of ``(method, path, handler)`` routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
+    A list of ``(method, path, handler)`` routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/latest/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
 
 ``static``
-    A list of ``(path, dirname)`` static routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
+    A list of ``(path, dirname)`` static routes to add to the aiohttp `Application <http://aiohttp.readthedocs.org/en/latest/web_reference.html#aiohttp.web.Application>`_. Defaults to ``[]``.
 
 ``on_finish``
-    A list of callbacks to be executed when the server shuts down. Each callback will be passed the aiohttp `Application <http://aiohttp.readthedocs.org/en/v0.15.3/web_reference.html#aiohttp.web.Application>`_.
+    A list of callbacks to be executed when the server shuts down. Each callback will be passed the aiohttp `Application <http://aiohttp.readthedocs.org/en/latest/web_reference.html#aiohttp.web.Application>`_.
 
 ``script_name``
     The URL prefix to mount the WSGI application. Corresponds to ``environ["SCRIPT_NAME"]``. This should **not** end with a slash. Defaults to ``""``.
@@ -129,8 +129,8 @@ blocking the main event loop or resorting to hacks like monkey-patching the Pyth
 standard library. This enables you to write the majority of your application code in a safe,
 predictable environment.
 
-Asyncronous parts of your application (e.g. `websockets <http://aiohttp.readthedocs.org/en/v0.15.3/web.html#websockets>`_)
-can be run on the same network port, using the `aiohttp router <http://aiohttp.readthedocs.org/en/v0.15.3/web.html#run-a-simple-web-server>`_
+Asyncronous parts of your application (e.g. `websockets <http://aiohttp.readthedocs.org/en/latest/web.html#websockets>`_)
+can be run on the same network port, using the `aiohttp router <http://aiohttp.readthedocs.org/en/latest/web.html#run-a-simple-web-server>`_
 to switch between your WSGI app and asyncronous code.
 
 
