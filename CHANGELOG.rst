@@ -2,6 +2,12 @@ aiohttp-wsgi changelog
 ======================
 
 
+0.2.5
+-----
+
+- Updated to work with breaking changes in aiohttp 0.17.0.
+
+
 0.2.4
 -----
 
