@@ -9,7 +9,7 @@ setup(
     author = "Dave Hall",
     author_email = "dave@etianen.com",
     url = "https://github.com/etianen/aiohttp-wsgi",
-    packages = find_packages(),
+    packages = find_packages(exclude=("tests",)),
     install_requires = [
         "aiohttp>=0.17.0",
     ],
