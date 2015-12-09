@@ -1,6 +1,11 @@
 aiohttp-wsgi changelog
 ======================
 
+0.2.6
+-----
+
+- Excluded tests from distribution.
+
 
 0.2.5
 -----
