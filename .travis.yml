@@ -5,7 +5,7 @@ python:
   - 3.5
 env:
   global:
-    - PYTHONWARNINGS=default
+    - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
     - PYTHONASYNCIODEBUG=1
 matrix:
   fast_finish: true
