@@ -123,7 +123,7 @@ class WSGIResponse:
             self._request.app.logger.error("Unexpected error", exc_info=exc_info)
             # Attempt to modify the response.
             try:
-                if self._response and self._response.started:
+                if self._response and self._response.prepared:
                     raise exc_info[1].with_traceback(exc_info[2])
                 self._response = None
             finally:
@@ -148,8 +148,8 @@ class WSGIResponse:
 
     def _write_head(self):
         assert self._response, "Application did not call start_response()"
-        if not self._response.started:
-            run_in_loop(self._response.start, self._request)
+        if not self._response.prepared:
+            run_in_loop(self._response.prepare, self._request)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"

@@ -21,7 +21,6 @@ class LoopContext(threading.local):
         self._is_executor = False
         # Local variables used by executor threads.
         self._loop = None
-        self._call_complete = threading.Event()
 
     def is_executor(self):
         """
@@ -60,19 +59,13 @@ class LoopContext(threading.local):
         using ``run_in_executor()``.
         """
         assert self.is_executor(), "Cannot call run_in_loop from within an event loop."
-        call_complete = self._call_complete  # Get a reference to this thread's call lock.
         # Wrap the function to unlock the event when complete.
         @wraps(func)
-        def run_func(*args):
-            try:
-                func(*args)
-            finally:
-                call_complete.set()
-        # Clear the event, in preparaation for calling the function in the loop.
-        call_complete.clear()
+        @asyncio.coroutine
+        def run_func():
+            return (yield from func(*args))
         # Run the function in the loop, and wait for it to complete.
-        self._loop.call_soon_threadsafe(run_func, *args)
-        call_complete.wait()
+        return asyncio.run_coroutine_threadsafe(run_func(), self._loop).result()
 
 
 _context = LoopContext()

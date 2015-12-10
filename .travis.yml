@@ -1,8 +1,8 @@
 language: python
 sudo: false
 python:
-  - 3.3
   - 3.4
+  - 3.5
 env:
   global:
     - PYTHONWARNINGS=default
@@ -11,7 +11,7 @@ matrix:
   fast_finish: true
 install:
   - travis_retry pip install -e .[test]
-script: 
+script:
   - py.test tests --cov=aiohttp_wsgi --cov-report=term-missing
 notifications:
   email: false
