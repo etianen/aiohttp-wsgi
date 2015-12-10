@@ -66,3 +66,4 @@ def error_after_write_application(environ, start_response):
 @pytest.mark.parametrize("application", [error_after_write_application])
 def test_error_after_response_write(response):
     assert response.status == 509
+

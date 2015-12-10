@@ -1,6 +1,7 @@
 import pytest
 
 import aiohttp
+from aiohttp.errors import ServerDisconnectedError
 
 from aiohttp_wsgi.api import configure_server, close_server
 
@@ -100,7 +101,10 @@ def response(event_loop, server, unused_tcp_port, request_method, request_path, 
         yield response
     finally:
         response.close()
-        event_loop.run_until_complete(response.wait_for_close())
+        try:
+            event_loop.run_until_complete(response.wait_for_close())
+        except ServerDisconnectedError:
+            pass
 
 
 # Helpers.
