@@ -15,9 +15,9 @@ setup(
     ],
     extras_require = {
         "test":  [
-            "pytest",
-            "pytest-cov",
-            "pytest-asyncio",
+            "pytest>=2.8.4",
+            "pytest-cov>=2.2.0",
+            "pytest-asyncio>=0.2.0",
         ],
     },
     classifiers = [
