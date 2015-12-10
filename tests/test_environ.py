@@ -24,6 +24,13 @@ def test_path_subdir(environ):
     assert environ["SCRIPT_NAME"] == ""
     assert environ["PATH_INFO"] == "/foo"
 
+# https://github.com/etianen/aiohttp-wsgi/issues/5
+@pytest.mark.parametrize("request_path", ["/Test%20%C3%A1%20%C3%B3"])
+@server_test
+def test_path_quoted(environ):
+    assert environ["SCRIPT_NAME"] == ""
+    assert environ["PATH_INFO"] == "/Test%20%C3%A1%20%C3%B3"
+
 @pytest.mark.parametrize("script_name", ["/foo"])
 @pytest.mark.parametrize("request_path", ["/foo"])
 @server_test
@@ -59,7 +66,7 @@ def test_content_length_empty(environ):
     assert environ["CONTENT_LENGTH"] == "0"
 
 @pytest.mark.parametrize("request_method", ["POST"])
-@pytest.mark.parametrize("request_data", [b"foobar"])    
+@pytest.mark.parametrize("request_data", [b"foobar"])
 @server_test
 def test_content_length_post(environ):
     assert environ["CONTENT_LENGTH"] == "6"
@@ -75,7 +82,7 @@ def test_server_port(environ):
 @server_test
 def test_remote_addr(environ):
     assert environ["REMOTE_ADDR"] == "127.0.0.1"
-    
+
 @server_test
 def test_remote_host(environ):
     assert environ["REMOTE_HOST"] == "127.0.0.1"

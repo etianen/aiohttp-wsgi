@@ -1,5 +1,6 @@
 import asyncio, io, sys
 from wsgiref.util import is_hop_by_hop
+from urllib.parse import quote
 
 from aiohttp.web import StreamResponse
 
@@ -54,8 +55,8 @@ class WSGIHandler:
         # Create the environ.
         environ = {
             "REQUEST_METHOD": request.method,
-            "SCRIPT_NAME": script_name,
-            "PATH_INFO": path_info,
+            "SCRIPT_NAME": quote(script_name),  # WSGI spec expects URL-quoted path components.
+            "PATH_INFO": quote(path_info),  # WSGI spec expects URL-quoted path components.
             "QUERY_STRING": request.query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(len(body)),
