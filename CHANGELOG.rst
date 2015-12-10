@@ -1,6 +1,14 @@
 aiohttp-wsgi changelog
 ======================
 
+0.3.0
+-----
+
+- ``PATH_INFO`` and ``SCRIPT_NAME`` now contain URL-quoted non-ascii characters, as per PEP3333.
+- **Breaking**: Removed support for Python3.3.
+- **Breaking**: Minimum aiohttp version is now 0.19.0.
+
+
 0.2.6
 -----
 
