@@ -11,7 +11,8 @@ From within an executor:
 
 This API is currently unstable, and may be subject to change.
 """
-import threading, asyncio
+import asyncio, threading
+from concurrent.futures import Future
 from functools import wraps, partial
 
 
@@ -21,7 +22,6 @@ class LoopContext(threading.local):
         self._is_executor = False
         # Local variables used by executor threads.
         self._loop = None
-        self._call_complete = threading.Event()
 
     def is_executor(self):
         """
@@ -60,20 +60,19 @@ class LoopContext(threading.local):
         using ``run_in_executor()``.
         """
         assert self.is_executor(), "Cannot call run_in_loop from within an event loop."
-        call_complete = self._call_complete  # Get a reference to this thread's call lock.
-        # Wrap the function to unlock the event when complete.
+        # Chain the asyncio future onto a concurrent future.
+        future = Future()
         @asyncio.coroutine
         @wraps(func)
         def run_func():
-            try:
-                yield from func(*args)
-            finally:
-                call_complete.set()
-        # Clear the event, in preparaation for calling the function in the loop.
-        call_complete.clear()
+            if future.set_running_or_notify_cancel():
+                try:
+                    future.set_result((yield from func(*args)))
+                except Exception as ex:  # pragma: no cover
+                    future.set_exception(ex)
         # Run the function in the loop, and wait for it to complete.
         self._loop.call_soon_threadsafe(partial(asyncio.async, run_func(), loop=self._loop))
-        call_complete.wait()
+        return future.result()
 
 
 _context = LoopContext()
