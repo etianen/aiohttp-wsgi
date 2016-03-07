@@ -54,7 +54,7 @@ class LoopContext(threading.local):
 
     def run_in_loop(self, func, *args):
         """
-        Runs the given func in the event loop, returning nothing.
+        Runs the given func in the event loop, returning a future.
 
         This function can only be called from within a function that was called
         using ``run_in_executor()``.
