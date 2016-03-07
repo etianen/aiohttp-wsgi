@@ -47,6 +47,12 @@ Usage
 ``stderr``
     A file-like value for WSGI error logging. Corresponds to ``environ["wsgi.errors"]``.  Defaults to ``sys.stderr``.
 
+``inbuf_overflow``
+    A tempfile will be created if the request body is larger than ``inbuf_overflow``, which is measured in bytes. Defaults to 512K (524288).
+
+``max_request_body_size``
+    Maximum number of bytes in request body. Defaults to 1GB (1073741824). Larger requests will receive a HTTP 413 (Request Entity Too Large) response.
+
 ``executor``
     An `Executor <https://docs.python.org/dev/library/concurrent.futures.html#executor-objects>`_ instance used to run WSGI requests. Defaults to the asyncio base executor.
 

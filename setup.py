@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "aiohttp-wsgi",
-    version = "0.3.0",
+    version = "0.4.0",
     license = "BSD",
     description = "WSGI adapter for aiohttp.",
     author = "Dave Hall",

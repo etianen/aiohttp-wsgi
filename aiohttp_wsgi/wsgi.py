@@ -1,8 +1,8 @@
-import asyncio, io, sys
+import asyncio, sys, tempfile
 from wsgiref.util import is_hop_by_hop
 from urllib.parse import quote
 
-from aiohttp.web import StreamResponse
+from aiohttp.web import Response, StreamResponse
 
 from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.concurrent import run_in_executor, run_in_loop
@@ -15,6 +15,8 @@ class WSGIHandler:
         # Handler config.
         url_scheme = None,
         stderr = sys.stderr,
+        inbuf_overflow = 524288,
+        max_request_body_size = 1073741824,
 
         # asyncio config.
         executor = None,
@@ -25,12 +27,14 @@ class WSGIHandler:
         # Handler config.
         self._url_scheme = url_scheme
         self._stderr = stderr
+        self._inbuf_overflow = inbuf_overflow
+        self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
 
     @asyncio.coroutine
-    def _get_environ(self, request):
+    def _get_environ(self, request, body, content_length):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
         script_name = request.path[:len(request.path)-len(path_info)]
@@ -43,8 +47,6 @@ class WSGIHandler:
         if script_name.endswith("/"):
             script_name = script_name[:-1]
             path_info = "/" + path_info
-        # Read the body.
-        body = (yield from request.read())
         # Parse the connection info.
         server_name, server_port = parse_sockname(request.transport.get_extra_info("sockname"))
         remote_addr, remote_port = parse_sockname(request.transport.get_extra_info("peername"))
@@ -59,7 +61,7 @@ class WSGIHandler:
             "PATH_INFO": quote(path_info),  # WSGI spec expects URL-quoted path components.
             "QUERY_STRING": request.query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
-            "CONTENT_LENGTH": str(len(body)),
+            "CONTENT_LENGTH": str(content_length),
             "SERVER_NAME": server_name,
             "SERVER_PORT": server_port,
             "REMOTE_ADDR": remote_addr,
@@ -68,7 +70,7 @@ class WSGIHandler:
             "SERVER_PROTOCOL": "HTTP/{}.{}".format(*request.version),
             "wsgi.version": (1, 0),
             "wsgi.url_scheme": url_scheme,
-            "wsgi.input": io.BytesIO(body),
+            "wsgi.input": body,
             "wsgi.errors": self._stderr,
             "wsgi.multithread": True,
             "wsgi.multiprocess": False,
@@ -98,10 +100,28 @@ class WSGIHandler:
 
     @asyncio.coroutine
     def handle_request(self, request):
-        environ = (yield from self._get_environ(request))
-        response = WSGIResponse(self, request)
-        yield from run_in_executor(self._run_application, environ, response, loop=self._loop, executor=self._executor)
-        return response._response
+        # Check for body size overflow.
+        if request.content_length is not None and request.content_length > self._max_request_body_size:
+            return Response(status=413)
+        # Read the body.
+        content_length = 0
+        with tempfile.SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
+            while True:
+                block = yield from request.content.readany()
+                if not block:
+                    break
+                content_length += len(block)
+                # Check for body size overflow. The request might be streaming, so we check with every chunk.
+                if content_length > self._max_request_body_size:
+                    return Response(status=413)
+                body.write(block)
+            body.seek(0)
+            # Run the app.
+            environ = (yield from self._get_environ(request, body, content_length))
+            response = WSGIResponse(self, request)
+            yield from run_in_executor(self._run_application, environ, response, loop=self._loop, executor=self._executor)
+            # ALll done!
+            return response._response
 
     @asyncio.coroutine
     def __call__(self, request):  # pragma: no cover

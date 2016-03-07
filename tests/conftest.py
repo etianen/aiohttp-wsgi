@@ -33,6 +33,14 @@ def url_scheme():
     return None
 
 @pytest.fixture
+def inbuf_overflow():
+    return 524288
+
+@pytest.fixture
+def max_request_body_size():
+    return 1073741824
+
+@pytest.fixture
 def unix_socket():
     return None
 
@@ -53,7 +61,7 @@ def on_finish():
     return ()
 
 @pytest.yield_fixture
-def server(event_loop, unused_tcp_port, application, script_name, url_scheme, unix_socket, socket, routes, static, on_finish):
+def server(event_loop, unused_tcp_port, application, script_name, url_scheme, inbuf_overflow, max_request_body_size, unix_socket, socket, routes, static, on_finish):
     # Create a server.
     server, app = configure_server(application,
         host = "127.0.0.1",
@@ -61,6 +69,8 @@ def server(event_loop, unused_tcp_port, application, script_name, url_scheme, un
         loop = event_loop,
         script_name = script_name,
         url_scheme = url_scheme,
+        inbuf_overflow = inbuf_overflow,
+        max_request_body_size = max_request_body_size,
         unix_socket = unix_socket,
         socket = socket,
         routes = routes,
@@ -95,16 +105,17 @@ def request_connector():
 
 @pytest.yield_fixture
 def response(event_loop, server, unused_tcp_port, request_method, request_path, request_data, request_headers, request_connector):
-    uri = "http://127.0.0.1:{}{}".format(unused_tcp_port, request_path)
-    response = event_loop.run_until_complete(aiohttp.request(request_method, uri, data=request_data, headers=request_headers, connector=request_connector, loop=event_loop))
-    try:
-        yield response
-    finally:
-        response.close()
+    with aiohttp.ClientSession(connector=request_connector, loop=event_loop) as session:
+        uri = "http://127.0.0.1:{}{}".format(unused_tcp_port, request_path)
+        response = event_loop.run_until_complete(session.request(request_method, uri, data=request_data, headers=request_headers))
         try:
-            event_loop.run_until_complete(response.wait_for_close())
-        except ServerDisconnectedError:
-            pass
+            yield response
+        finally:
+            response.close()
+            try:
+                event_loop.run_until_complete(response.wait_for_close())
+            except ServerDisconnectedError:
+                pass
 
 
 # Helpers.

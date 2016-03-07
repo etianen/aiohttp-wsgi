@@ -1,6 +1,15 @@
 aiohttp-wsgi changelog
 ======================
 
+
+0.4.0
+-----
+
+- Requests over 512KB will be buffered in a temporary file. Can be configured using the ``inbuf_overflow`` setting.
+- **Breaking**: Maximum request body size is now 1GB. Can be configured using the ``max_request_body_size`` setting.
+- **Breaking**: Minimum aiohttp version is now 0.21.2.
+
+
 0.3.0
 -----
 
@@ -24,7 +33,7 @@ aiohttp-wsgi changelog
 0.2.4
 -----
 
-- Workaround for error in asyncio debug mode on some Python versions when using a callable object, `WSGIHandler.handle_request`.
+- Workaround for error in asyncio debug mode on some Python versions when using a callable object, ``WSGIHandler.handle_request``.
 
 
 0.2.3
