@@ -50,7 +50,7 @@ def configure_server(application, *,
         app.router.add_static(path, dirname)
     # Add on finish callbacks.
     for on_finish_callback in on_finish:
-        app.register_on_finish(on_finish_callback)
+        app.on_shutdown.append(on_finish_callback)
     # The WSGI spec says that script name should not end with a slash. However,
     # aiohttp wants all route paths to start with a forward slash. This means
     # we need a special case for mounting on the root.
