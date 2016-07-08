@@ -2,6 +2,12 @@ aiohttp-wsgi changelog
 ======================
 
 
+Latest
+------
+
+- Dropped support for Python 3.4.
+
+
 0.4.0
 -----
 

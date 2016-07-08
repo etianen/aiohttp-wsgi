@@ -148,8 +148,8 @@ def response(
 def server_test(func):
     @pytest.mark.asyncio
     @pytest.mark.parametrize("application_test", [func])
-    def client(response):
+    async def client(response):
         assert response.status == 200
         assert response.reason == "OK"
-        assert (yield from response.text()) == "Hello world"
+        assert await response.text() == "Hello world"
     return client

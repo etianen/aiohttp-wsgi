@@ -5,7 +5,6 @@ from wsgiref.util import is_hop_by_hop
 from urllib.parse import quote
 from aiohttp.web import Response, StreamResponse
 from aiohttp_wsgi.utils import parse_sockname
-from aiohttp_wsgi.concurrent import run_in_executor, run_in_loop
 
 
 class WSGIHandler:
@@ -32,8 +31,7 @@ class WSGIHandler:
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
 
-    @asyncio.coroutine
-    def _get_environ(self, request, body, content_length):
+    async def _get_environ(self, request, body, content_length):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
         script_name = request.path[:len(request.path)-len(path_info)]
@@ -90,15 +88,15 @@ class WSGIHandler:
             # Run through all the data.
             for data in body_iterable:
                 response.write(data)
-            # Finish the response.
-            response.write_eof()
+            else:
+                # Ensure that empty responses are still started.
+                response.write(b"")
         finally:
             # Close the body.
             if hasattr(body_iterable, "close"):
                 body_iterable.close()
 
-    @asyncio.coroutine
-    def handle_request(self, request):
+    async def handle_request(self, request):
         # Check for body size overflow.
         if request.content_length is not None and request.content_length > self._max_request_body_size:
             return Response(status=413)
@@ -106,7 +104,7 @@ class WSGIHandler:
         content_length = 0
         with tempfile.SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
             while True:
-                block = yield from request.content.readany()
+                block = await request.content.readany()
                 if not block:
                     break
                 content_length += len(block)
@@ -116,21 +114,14 @@ class WSGIHandler:
                 body.write(block)
             body.seek(0)
             # Run the app.
-            environ = (yield from self._get_environ(request, body, content_length))
+            environ = await self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
-            yield from run_in_executor(
-                self._run_application,
-                environ,
-                response,
-                loop=self._loop,
-                executor=self._executor,
-            )
+            await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
             # ALll done!
             return response._response
 
-    @asyncio.coroutine
-    def __call__(self, request):  # pragma: no cover
-        return (yield from self.handle_request(request))
+    async def __call__(self, request):  # pragma: no cover
+        return await self.handle_request(request)
 
 
 class WSGIResponse:
@@ -172,16 +163,13 @@ class WSGIResponse:
         # Return the stream writer interface.
         return self.write
 
-    def _write_head(self):
+    async def _write(self, data):
         assert self._response, "Application did not call start_response()"
         if not self._response.prepared:
-            run_in_loop(self._response.prepare, self._request)
+            await self._response.prepare(self._request)
+        if data:
+            self._response.write(data)
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
-        if data:
-            self._write_head()
-            run_in_loop(self._response.write, data)
-
-    def write_eof(self):
-        self._write_head()
+        asyncio.run_coroutine_threadsafe(self._write(data), loop=self._handler._loop).result()

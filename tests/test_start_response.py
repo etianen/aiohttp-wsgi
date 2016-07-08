@@ -28,8 +28,8 @@ def streaming_response_application(environ, start_response):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("application", [streaming_response_application])
-def test_streaming_response(response):
-    assert (yield from response.read()) == CHUNK * CHUNK_COUNT
+async def test_streaming_response(response):
+    assert await response.read() == CHUNK * CHUNK_COUNT
 
 
 def streaming_response_sync_application(environ, start_response):
@@ -43,5 +43,5 @@ def streaming_response_sync_application(environ, start_response):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("application", [streaming_response_sync_application])
-def test_streaming_response_sync(response):
-    assert (yield from response.read()) == CHUNK * CHUNK_COUNT
+async def test_streaming_response_sync(response):
+    assert await response.read() == CHUNK * CHUNK_COUNT

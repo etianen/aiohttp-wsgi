@@ -20,9 +20,9 @@ def error_handling_application(environ, start_response):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("application", [error_handling_application])
-def test_error_handling(response):
+async def test_error_handling(response):
     assert response.status == 509
-    assert (yield from response.text()) == "Boom!"
+    assert await response.text() == "Boom!"
 
 
 # Unexpected application behavior.
