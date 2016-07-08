@@ -1,44 +1,36 @@
-import asyncio, os
+import asyncio
+import os
 from collections.abc import Mapping
-
 from aiohttp.web import Application
-
 from aiohttp_wsgi.wsgi import WSGIHandler
 from aiohttp_wsgi.utils import parse_sockname
 
 
-def configure_server(application, *,
-
+def configure_server(
+    application, *,
     # Server config.
-    host = "0.0.0.0",
-    port = 8080,
-
+    host="0.0.0.0",
+    port=8080,
     # Unix server config.
-    unix_socket = None,
-    unix_socket_perms = 0o600,
-
+    unix_socket=None,
+    unix_socket_perms=0o600,
     # Prexisting socket config.
-    socket = None,
-
+    socket=None,
     # Shared server config.
-    backlog = 1024,
-
+    backlog=1024,
     # aiohttp config.
-    routes = (),
-    static = (),
-    on_finish = (),
-
+    routes=(),
+    static=(),
+    on_finish=(),
     # Asyncio config.
-    loop = None,
-
+    loop=None,
     # Handler config.
-    script_name = "",
+    script_name="",
     **kwargs
-
 ):
     loop = loop or asyncio.get_event_loop()
     app = Application(
-        loop = loop,
+        loop=loop,
     )
     # Add routes.
     for method, path, handler in routes:
@@ -61,25 +53,31 @@ def configure_server(application, *,
     if not script_name.startswith("/"):  # pragma: no cover
         raise ValueError("Script name should start with /")
     # Add the wsgi application. This has to be last.
-    app.router.add_route("*", "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs).handle_request)
+    app.router.add_route(
+        "*",
+        "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs).handle_request,
+    )
     # Set up the server.
     shared_server_kwargs = {
         "backlog": backlog,
     }
     if unix_socket is not None:
-        server_future = loop.create_unix_server(app.make_handler(),
-            path = unix_socket,
+        server_future = loop.create_unix_server(
+            app.make_handler(),
+            path=unix_socket,
             **shared_server_kwargs
         )
     elif socket is not None:
-        server_future = loop.create_server(app.make_handler(),
-            sock = socket,
+        server_future = loop.create_server(
+            app.make_handler(),
+            sock=socket,
             **shared_server_kwargs
         )
     else:
-        server_future = loop.create_server(app.make_handler(),
-            host = host,
-            port = port,
+        server_future = loop.create_server(
+            app.make_handler(),
+            host=host,
+            port=port,
             **shared_server_kwargs
         )
     server = loop.run_until_complete(server_future)

@@ -1,18 +1,20 @@
 language: python
 sudo: false
 python:
-  - 3.4
   - 3.5
 env:
+  matrix:
+    - TOXENV=py34
+    - TOXENV=py35
+    - TOXENV=flake8
+    - TOXENV=docs
   global:
     - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
     - PYTHONASYNCIODEBUG=1
 matrix:
   fast_finish: true
 install:
-  - travis_retry pip install --upgrade pip
-  - travis_retry pip install -e .[test]
-script:
-  - py.test tests --cov=aiohttp_wsgi --cov-report=term-missing
+  - pip install 'tox>=2.3.1'
+script: tox
 notifications:
   email: false

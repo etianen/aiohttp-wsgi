@@ -1,28 +1,27 @@
-import asyncio, sys, tempfile
+import asyncio
+import sys
+import tempfile
 from wsgiref.util import is_hop_by_hop
 from urllib.parse import quote
-
 from aiohttp.web import Response, StreamResponse
-
 from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.concurrent import run_in_executor, run_in_loop
 
 
 class WSGIHandler:
 
-    def __init__(self, application, *,
-
+    def __init__(
+        self,
+        application, *,
         # Handler config.
-        url_scheme = None,
-        stderr = sys.stderr,
-        inbuf_overflow = 524288,
-        max_request_body_size = 1073741824,
-
+        url_scheme=None,
+        stderr=sys.stderr,
+        inbuf_overflow=524288,
+        max_request_body_size=1073741824,
         # asyncio config.
-        executor = None,
-        loop = None
-
-        ):
+        executor=None,
+        loop=None
+    ):
         self._application = application
         # Handler config.
         self._url_scheme = url_scheme
@@ -79,7 +78,7 @@ class WSGIHandler:
         # Add in additional HTTP headers.
         for header_name in request.headers:
             header_name = header_name.upper()
-            if not(is_hop_by_hop(header_name)) and not header_name in ("CONTENT-LENGTH", "CONTENT-TYPE"):
+            if not(is_hop_by_hop(header_name)) and header_name not in ("CONTENT-LENGTH", "CONTENT-TYPE"):
                 header_value = ",".join(request.headers.getall(header_name))
                 environ["HTTP_" + header_name.replace("-", "_")] = header_value
         # All done!
@@ -119,7 +118,13 @@ class WSGIHandler:
             # Run the app.
             environ = (yield from self._get_environ(request, body, content_length))
             response = WSGIResponse(self, request)
-            yield from run_in_executor(self._run_application, environ, response, loop=self._loop, executor=self._executor)
+            yield from run_in_executor(
+                self._run_application,
+                environ,
+                response,
+                loop=self._loop,
+                executor=self._executor,
+            )
             # ALll done!
             return response._response
 
@@ -157,8 +162,8 @@ class WSGIResponse:
         status_code = int(status_code)
         # Store the response.
         self._response = StreamResponse(
-            status = status_code,
-            reason = reason,
+            status=status_code,
+            reason=reason,
         )
         # Store the headers.
         for header_name, header_value in headers:

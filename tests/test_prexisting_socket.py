@@ -21,6 +21,7 @@ def socket(unused_tcp_port):
 def test_server_name(environ):
     assert environ["SERVER_NAME"] == "127.0.0.1"
 
+
 @server_test
 def test_server_port(environ):
     assert int(environ["SERVER_PORT"])

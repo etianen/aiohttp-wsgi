@@ -11,7 +11,8 @@ From within an executor:
 
 This API is currently unstable, and may be subject to change.
 """
-import asyncio, threading
+import asyncio
+import threading
 from concurrent.futures import Future
 from functools import wraps, partial
 
@@ -39,6 +40,7 @@ class LoopContext(threading.local):
         """
         assert not self.is_executor(), "Cannot call run_in_executor from within an executor."
         loop = loop or asyncio.get_event_loop()
+
         # Wrap the func to tag the thread as an executor.
         @wraps(func)
         def run_func(*args):
@@ -62,6 +64,7 @@ class LoopContext(threading.local):
         assert self.is_executor(), "Cannot call run_in_loop from within an event loop."
         # Chain the asyncio future onto a concurrent future.
         future = Future()
+
         @asyncio.coroutine
         @wraps(func)
         def run_func():

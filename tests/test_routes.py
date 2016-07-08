@@ -6,11 +6,13 @@ from aiohttp.web import Response
 def route_handler(request):
     return Response(body=b"aiohttp handler")
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("routes", [[("GET", "/foo", route_handler)]])
 def test_custom_routes_miss(response):
     assert response.status == 200
     assert (yield from response.text()) == "Hello world"
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("routes", [[("GET", "/foo", route_handler)]])

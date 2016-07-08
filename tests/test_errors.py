@@ -17,6 +17,7 @@ def error_handling_application(environ, start_response):
         ], sys.exc_info())
         return [b"Boom!"]
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("application", [error_handling_application])
 def test_error_handling(response):
@@ -29,9 +30,11 @@ def test_error_handling(response):
 def no_start_response_application(environ, start_response):
     return [b"Hello world"]
 
+
 @pytest.mark.parametrize("application", [no_start_response_application])
 def test_no_start_response(response):
     assert response.status == 500
+
 
 def start_response_twice_appliction(environ, start_response):
     start_response("200 OK", [
@@ -41,9 +44,11 @@ def start_response_twice_appliction(environ, start_response):
         ("Content-Type", "text/html; charse=utf-8"),
     ])
 
+
 @pytest.mark.parametrize("application", [start_response_twice_appliction])
 def test_start_response_twice(response):
     assert response.status == 500
+
 
 def error_after_write_application(environ, start_response):
     try:
@@ -63,7 +68,7 @@ def error_after_write_application(environ, start_response):
                 ("Content-Type", "text/html; charse=utf-8"),
             ], sys.exc_info())
 
+
 @pytest.mark.parametrize("application", [error_after_write_application])
 def test_error_after_response_write(response):
     assert response.status == 509
-
