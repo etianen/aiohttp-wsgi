@@ -11,13 +11,13 @@ setup(
     url = "https://github.com/etianen/aiohttp-wsgi",
     packages = find_packages(exclude=("tests",)),
     install_requires = [
-        "aiohttp>=0.21.2",
+        "aiohttp>=0.21.6",
     ],
     extras_require = {
         "test":  [
-            "pytest>=2.8.4",
-            "pytest-cov>=2.2.0",
-            "pytest-asyncio>=0.2.0",
+            "pytest>=2.9.2",
+            "pytest-cov>=2.3.0",
+            "pytest-asyncio>=0.3.0,<0.4",
         ],
     },
     classifiers = [
