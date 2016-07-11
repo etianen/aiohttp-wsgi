@@ -27,16 +27,17 @@ class Request:
 
 class TestServer:
 
-    def __init__(self, test_case, application, *, loop, **kwargs):
+    def __init__(self, test_case, application, *, loop, script_name="/", **kwargs):
         self.test_case = test_case
         self.application = application
         self.loop = loop
+        self.script_name = script_name
         self.kwargs = kwargs
 
     async def __aenter__(self):
         wsgi_handler = WSGIHandler(self.application, loop=self.loop, **self.kwargs)
         self.app = web.Application(loop=self.loop)
-        self.app.router.add_route("*", "/{path_info:.*}", wsgi_handler)
+        self.app.router.add_route("*", "{}{{path_info:.*}}".format(self.script_name), wsgi_handler)
         self.handler = self.app.make_handler()
         self.server = await self.loop.create_server(self.handler, "127.0.0.1", 0)
         self.session = aiohttp.ClientSession(loop=self.loop)

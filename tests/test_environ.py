@@ -26,6 +26,8 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["REMOTE_HOST"], "127.0.0.1")
         self.assertGreater(int(environ["REMOTE_PORT"]), 0)
         self.assertEqual(environ["SERVER_PROTOCOL"], "HTTP/1.1")
+        self.assertEqual(environ["HTTP_FOO"], "bar")
+        self.assertEqual(environ["wsgi.version"], (1, 0))
         self.assertEqual(environ["wsgi.url_scheme"], "http")
         self.assertTrue(hasattr(environ["wsgi.errors"], "write"))
         self.assertTrue(environ["wsgi.multithread"])
@@ -35,7 +37,24 @@ class EnvironTest(AsyncTestCase):
 
     async def testEnviron(self):
         async with self.server(self.assertEnviron) as server:
-            await server.assertResponse()
+            await server.assertResponse(headers={
+                "Foo": "bar",
+            })
+
+    @asserts_environ
+    def assertEnvironPost(self, environ):
+        self.assertEqual(environ["REQUEST_METHOD"], "POST")
+        self.assertEqual(environ["CONTENT_TYPE"], "text/plain")
+        self.assertEqual(environ["CONTENT_LENGTH"], "6")
+        self.assertEqual(environ["wsgi.input"].read(), b"foobar")
+
+    async def testEnvironPost(self):
+        async with self.server(self.assertEnvironPost) as server:
+            await server.assertResponse(
+                method="POST",
+                headers={"Content-Type": "text/plain"},
+                data=b"foobar",
+            )
 
     @asserts_environ
     def assertEnvironSubdir(self, environ):
@@ -46,83 +65,46 @@ class EnvironTest(AsyncTestCase):
         async with self.server(self.assertEnvironSubdir) as server:
             await server.assertResponse(path="/foo")
 
+    @asserts_environ
+    def assertEnvironSubdirQuoted(self, environ):
+        self.assertEqual(environ["SCRIPT_NAME"], "")
+        self.assertEqual(environ["PATH_INFO"], "/foo%20")
 
-# @pytest.mark.parametrize("request_method", ["POST"])
-# @server_test
-# def test_request_method_post(environ):
-#     self.assertEqual(environ["REQUEST_METHOD"], "POST")
+    async def testEnvironSubdirQuoted(self):
+        async with self.server(self.assertEnvironSubdirQuoted) as server:
+            await server.assertResponse(path="/foo%20")
 
+    @asserts_environ
+    def assertEnvironRootSubdir(self, environ):
+        self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+        self.assertEqual(environ["PATH_INFO"], "")
 
-# @pytest.mark.parametrize("request_path", ["/foo"])
-# @server_test
-# def test_path_subdir(environ):
-#
-#
-#
-#
-# # https://github.com/etianen/aiohttp-wsgi/issues/5
-# @pytest.mark.parametrize("request_path", ["/Test%20%C3%A1%20%C3%B3"])
-# @server_test
-# def test_path_quoted(environ):
-#     self.assertEqual(environ["SCRIPT_NAME"], "")
-#     self.assertEqual(environ["PATH_INFO"], "/Test%20%C3%A1%20%C3%B3")
-#
-#
-# @pytest.mark.parametrize("script_name", ["/foo"])
-# @pytest.mark.parametrize("request_path", ["/foo"])
-# @server_test
-# def test_path_root_subdir(environ):
-#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
-#     self.assertEqual(environ["PATH_INFO"], "")
-#
-#
-# @pytest.mark.parametrize("script_name", ["/foo"])
-# @pytest.mark.parametrize("request_path", ["/foo/"])
-# @server_test
-# def test_path_root_subdir_slash(environ):
-#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
-#     self.assertEqual(environ["PATH_INFO"], "/")
-#
-#
-# @pytest.mark.parametrize("script_name", ["/foo"])
-# @pytest.mark.parametrize("request_path", ["/foo/bar"])
-# @server_test
-# def test_path_root_subdir_trailing(environ):
-#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
-#     self.assertEqual(environ["PATH_INFO"], "/bar")
-#
-#
-# @pytest.mark.parametrize("request_headers", [{"Content-Type": "text/plain"}])
-# @server_test
-# def test_content_type_set(environ):
-#     self.assertEqual(environ["CONTENT_TYPE"], "text/plain")
+    async def testEnvironRootSubdir(self):
+        async with self.server(self.assertEnvironRootSubdir, script_name="/foo") as server:
+            await server.assertResponse(path="/foo")
 
-# @pytest.mark.parametrize("request_method", ["POST"])
-# @pytest.mark.parametrize("request_data", [b"foobar"])
-# @server_test
-# def test_content_length_post(environ):
-#     self.assertEqual(environ["CONTENT_LENGTH"], "6")
+    @asserts_environ
+    def assertEnvironRootSubdirSlash(self, environ):
+        self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+        self.assertEqual(environ["PATH_INFO"], "/")
 
-#
-# @server_test
-# def test_wsgi_version(environ):
-#     self.assertEqual(environ["wsgi.version"], (1, 0))
+    async def testEnvironRootSubdirSlash(self):
+        async with self.server(self.assertEnvironRootSubdirSlash, script_name="/foo") as server:
+            await server.assertResponse(path="/foo/")
 
-#
-# @pytest.mark.parametrize("url_scheme", ["https"])
-# @server_test
-# def test_url_scheme_https(environ):
-#     self.assertEqual(environ["wsgi.url_scheme"], "https")
-#
-#
-# @pytest.mark.parametrize("request_method", ["POST"])
-# @pytest.mark.parametrize("request_data", [b"foobar"])
-# @server_test
-# def test_wsgi_input(environ):
-#     self.assertEqual(environ["wsgi.input"].read(6), b"foobar")
+    @asserts_environ
+    def assertEnvironRootSubdirTrailing(self, environ):
+        self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+        self.assertEqual(environ["PATH_INFO"], "/bar")
 
+    async def testEnvironRootSubdirTrailing(self):
+        async with self.server(self.assertEnvironRootSubdirTrailing, script_name="/foo") as server:
+            await server.assertResponse(path="/foo/bar")
 
-# @pytest.mark.parametrize("request_headers", [{"Foo": "Bar"}])
-# @server_test
-# def test_custom_header(environ):
-#     self.assertEqual(environ["HTTP_FOO"], "Bar")
+    @asserts_environ
+    def assertEnvironUrlScheme(self, environ):
+        self.assertEqual(environ["wsgi.url_scheme"], "https")
+
+    async def testEnvironUrlScheme(self):
+        async with self.server(self.assertEnvironUrlScheme, url_scheme="https") as server:
+            await server.assertResponse()
