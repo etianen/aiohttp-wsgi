@@ -107,12 +107,7 @@ class EnvironTest(AsyncTestCase):
 # @server_test
 # def test_wsgi_version(environ):
 #     self.assertEqual(environ["wsgi.version"], (1, 0))
-#
-#
-# @server_test
-# def test_url_scheme(environ):
-#
-#
+
 #
 # @pytest.mark.parametrize("url_scheme", ["https"])
 # @server_test
