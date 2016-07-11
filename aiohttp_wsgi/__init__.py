@@ -2,13 +2,13 @@
 aiohttp-wsgi
 ============
 
-WSGI adapter for :mod:`aiohttp`.
+WSGI adapter for :ref:`aiohttp <aiohttp-web>`.
 
 
 Features
 --------
 
--   Run WSGI applications (e.g. `Django`_, `Flask`_) on :mod:`aiohttp`.
+-   Run WSGI applications (e.g. `Django`_, `Flask`_) on :ref:`aiohttp <aiohttp-web>`.
 -   Handle thousands of client connections, using :mod:`asyncio`.
 -   Add :ref:`websockets <aiohttp-web-websockets>` to your existing Python web app!
 
@@ -28,6 +28,7 @@ Usage
     :maxdepth: 1
 
     installation
+    wsgi
 
 
 More information

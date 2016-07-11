@@ -1,10 +1,12 @@
 aiohttp-wsgi changelog
 ======================
 
+.. currentmodule:: aiohttp_wsgi
+
 Latest
 ------
 
--   Minimum :mod:`aiohttp` version is now 0.21.2.
+-   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
 -   **Breaking:** Removed support for Python 3.4.
 -   **Breaking:** Removed ``aiohttp.concurrent`` helpers, which are no longer required with Python 3.5+.
 
@@ -13,7 +15,7 @@ Latest
 -----
 
 -   Requests over 512KB will be buffered in a temporary file. Can be configured using the ``inbuf_overflow`` argument to :func:`serve` and :func:`configure_server`.
--   Minimum :mod:`aiohttp` version is now 0.21.2.
+-   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
 -   **Breaking**: Maximum request body size is now 1GB. Can be configured using the ``max_request_body_size`` argument to :func:`serve` and :func:`configure_server`.
 
 
@@ -21,7 +23,7 @@ Latest
 -----
 
 -   ``PATH_INFO`` and ``SCRIPT_NAME`` now contain URL-quoted non-ascii characters, as per `PEP3333`_.
--   Minimum :mod:`aiohttp` version is now 0.19.0.
+-   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.19.0.
 -   **Breaking**: Removed support for Python3.3.
 
 
@@ -34,7 +36,7 @@ Latest
 0.2.5
 -----
 
--   Updated to work with breaking changes in :mod:`aiohttp` 0.17.0.
+-   Updated to work with breaking changes in :ref:`aiohttp <aiohttp-web>` 0.17.0.
 
 
 0.2.4
@@ -66,8 +68,8 @@ Latest
 0.2.0
 -----
 
--   **BREAKING**: Removed ``WSGIMiddleware`` in favor of :class:`WSGIHandler` (required to support :mod:`aiohttp` 0.15.0 without hacks).
--   Added support for :mod:`aiohttp` 0.15.0.
+-   **BREAKING**: Removed ``WSGIMiddleware`` in favor of :class:`WSGIHandler` (required to support :ref:`aiohttp <aiohttp-web>` 0.15.0 without hacks).
+-   Added support for :ref:`aiohttp <aiohttp-web>` 0.15.0.
 
 
 0.1.2
@@ -80,7 +82,7 @@ Latest
 0.1.1
 -----
 
--   Fixed ``RuntimeError`` in :mod:`aiohttp` (@jnurmine).
+-   Fixed ``RuntimeError`` in :ref:`aiohttp <aiohttp-web>` (@jnurmine).
 -   Added ``routes`` argument to :func:`serve` and :func:`configure_server`.
 -   Added ``static`` argument to :func:`serve` and :func:`configure_server`.
 

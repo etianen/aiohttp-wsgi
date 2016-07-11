@@ -1,3 +1,55 @@
+"""
+Running a WSGI app
+==================
+
+.. currentmodule:: aiohttp_wsgi
+
+:mod:`aiohttp_wsgi` allows you to run WSGI applications (e.g. `Django`_, `Flask`_) on :ref:`aiohttp <aiohttp-web>`.
+This allows you to add async features like websockets and long-polling to an existing Python web app.
+
+
+Run a simple web server
+-----------------------
+
+In order to implement a WSGI server, first import your WSGI application and wrap it in a :class:`WSGIHandler`.
+
+.. code:: python
+
+    from aiohttp import web
+    from aiohttp_wsgi import WSGIHandler
+    from your_project.wsgi import application
+
+    wsgi_handler = WSGIHandler(application)
+
+
+Next, create an :class:`Application <aiohttp.web.Application>` instance and register the request handler with the
+application's :class:`router <aiohttp.web.UrlDispatcher>` on a particular HTTP *method* and *path*:
+
+.. code:: python
+
+    app = web.Application()
+    app.router.add_route("*", "/{path_info:.*}", hello)
+
+After that, run the application by :func:`run_app() <aiohttp.web.run_app>` call:
+
+.. code:: python
+
+    web.run_app(app)
+
+See the :ref:`aiohttp.web <aiohttp-web>` documentation for information on adding
+:ref:`websockets <aiohttp-web-websockets>` and :ref:`async request handlers <aiohttp-web-handler>` to your app.
+
+
+API reference
+-------------
+
+.. autoclass:: WSGIHandler
+    :members:
+
+
+.. include:: /_include/links.rst
+"""
+
 import asyncio
 import sys
 import tempfile
@@ -9,12 +61,29 @@ from aiohttp_wsgi.utils import parse_sockname
 
 class WSGIHandler:
 
+    """
+    An adapter for WSGI applications, allowing them to run on :ref:`aiohttp <aiohttp-web>`.
+
+    :param callable application: A WSGI application callable.
+    :param str url_scheme: A hint about the URL scheme used to access the application. Corresponds to
+        ``environ["wsgi.uri_scheme"]``. Default value is auto-detected to ``"http"`` or ``"https"``.
+    :param io.BytesIO stderr: A file-like value for WSGI error logging. Corresponds to ``environ["wsgi.errors"]``.
+        Defaults to ``sys.stderr``.
+    :param int inbuf_overflow: A tempfile will be created if the request body is larger than ``inbuf_overflow``, which
+        is measured in bytes. Defaults to 512K (524288).
+    :param int max_request_body_size: Maximum number of bytes in request body. Defaults to 1GB (1073741824). Larger
+        requests will receive a HTTP 413 (Request Entity Too Large) response.
+    :param concurrent.futures.Executor executor: An Executor instance used to run WSGI requests. Defaults to the
+        :mod:`asyncio` base executor.
+    :param asyncio.BaseEventLoop loop: The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.
+    """
+
     def __init__(
         self,
         application, *,
         # Handler config.
         url_scheme=None,
-        stderr=sys.stderr,
+        stderr=None,
         inbuf_overflow=524288,
         max_request_body_size=1073741824,
         # asyncio config.
@@ -24,7 +93,7 @@ class WSGIHandler:
         self._application = application
         # Handler config.
         self._url_scheme = url_scheme
-        self._stderr = stderr
+        self._stderr = stderr or sys.stderr
         self._inbuf_overflow = inbuf_overflow
         self._max_request_body_size = max_request_body_size
         # asyncio config.
@@ -72,6 +141,7 @@ class WSGIHandler:
             "wsgi.multithread": True,
             "wsgi.multiprocess": False,
             "wsgi.run_once": False,
+            "asyncio.loop": self._loop,
         }
         # Add in additional HTTP headers.
         for header_name in request.headers:
