@@ -143,6 +143,7 @@ class WSGIHandler:
             "wsgi.run_once": False,
             "asyncio.loop": self._loop,
             "asyncio.executor": self._executor,
+            "aiohttp.request": request,
         }
         # Add in additional HTTP headers.
         for header_name in request.headers:
