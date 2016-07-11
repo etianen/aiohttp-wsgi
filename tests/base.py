@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 import aiohttp
 from aiohttp import web
 from aiohttp_wsgi import WSGIHandler
@@ -27,20 +28,24 @@ class Request:
 
 class TestServer:
 
-    def __init__(self, test_case, application, *, loop, script_name="/", **kwargs):
+    def __init__(self, test_case, application, *, script_name="/", **kwargs):
         self.test_case = test_case
         self.application = application
-        self.loop = loop
         self.script_name = script_name
         self.kwargs = kwargs
 
     async def __aenter__(self):
-        wsgi_handler = WSGIHandler(self.application, loop=self.loop, **self.kwargs)
-        self.app = web.Application(loop=self.loop)
+        wsgi_handler = WSGIHandler(
+            self.application,
+            loop=self.test_case.loop,
+            executor=self.test_case.executor,
+            **self.kwargs,
+        )
+        self.app = web.Application(loop=self.test_case.loop)
         self.app.router.add_route("*", "{}{{path_info:.*}}".format(self.script_name), wsgi_handler)
         self.handler = self.app.make_handler()
-        self.server = await self.loop.create_server(self.handler, "127.0.0.1", 0)
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        self.server = await self.test_case.loop.create_server(self.handler, "127.0.0.1", 0)
+        self.session = aiohttp.ClientSession(loop=self.test_case.loop)
         return self
 
     async def __aexit__(self, *exc_info):
@@ -75,7 +80,11 @@ class AsyncTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.loop = asyncio.new_event_loop()
-        self.addCleanup(self.loop.close)
+        self.executor = ThreadPoolExecutor(1)
+
+    def tearDown(self):
+        super().tearDown()
+        self.loop.close()
 
     def server(self, application, **kwargs):
-        return TestServer(self, application, loop=self.loop, **kwargs)
+        return TestServer(self, application, **kwargs)
