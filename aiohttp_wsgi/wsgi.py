@@ -120,7 +120,7 @@ class WSGIHandler:
             # ALll done!
             return response._response
 
-    async def __call__(self, request):  # pragma: no cover
+    async def __call__(self, request):
         return await self.handle_request(request)
 
 

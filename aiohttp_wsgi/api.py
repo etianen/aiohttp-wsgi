@@ -55,7 +55,7 @@ def configure_server(
     # Add the wsgi application. This has to be last.
     app.router.add_route(
         "*",
-        "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs).handle_request,
+        "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, **kwargs),
     )
     # Set up the server.
     shared_server_kwargs = {
