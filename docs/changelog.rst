@@ -9,6 +9,7 @@ Latest
 -   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
 -   **Breaking:** Removed support for Python 3.4.
 -   **Breaking:** Removed ``aiohttp.concurrent`` helpers, which are no longer required with Python 3.5+.
+-   **Breaking:** Removed ``serve()``, ``configure_server()`` and ``close_server()`` helpers. Use :class:`WSGIHandler` directly.
 
 
 0.4.0
@@ -42,7 +43,7 @@ Latest
 0.2.4
 -----
 
--   Workaround for error in :mod:`asyncio` debug mode on some Python versions when using a callable object, :meth:`WSGIHandler.handle_request`.
+-   Workaround for error in :mod:`asyncio` debug mode on some Python versions when using a callable object, ``WSGIHandler.handle_request``.
 
 
 0.2.3
@@ -61,7 +62,7 @@ Latest
 0.2.1
 -----
 
--   Added ``on_finish`` parameter to :func:`serve` and :func:`configure_server`.
+-   Added ``on_finish`` parameter to ``serve()`` and ``configure_server()``.
 -   Improved performance and predictability of processing streaming iterators from WSGI applications.
 
 
@@ -75,16 +76,16 @@ Latest
 0.1.2
 -----
 
--   Added ``socket`` argument to :func:`serve` and :func:`configure_server`.
--   Added ``backlog`` argument to :func:`serve` and :func:`configure_server`.
+-   Added ``socket`` argument to ``serve()`` and ``configure_server()``.
+-   Added ``backlog`` argument to ``serve()`` and ``configure_server()``.
 
 
 0.1.1
 -----
 
 -   Fixed ``RuntimeError`` in :ref:`aiohttp <aiohttp-web>` (@jnurmine).
--   Added ``routes`` argument to :func:`serve` and :func:`configure_server`.
--   Added ``static`` argument to :func:`serve` and :func:`configure_server`.
+-   Added ``routes`` argument to ``serve()`` and ``configure_server()``.
+-   Added ``static`` argument to ``serve()`` and ``configure_server()``.
 
 
 0.1.0
@@ -92,7 +93,7 @@ Latest
 
 -   First experimental release.
 -   Buffering WSGI web server with threaded workers.
--   Public :func:`configure_server` and :func:`serve` API.
+-   Public ``configure_server()`` and ``serve()`` API.
 
 
 .. include:: /_include/links.rst
