@@ -14,9 +14,9 @@ Latest
 0.4.0
 -----
 
--   Requests over 512KB will be buffered in a temporary file. Can be configured using the ``inbuf_overflow`` argument to :func:`serve` and :func:`configure_server`.
+-   Requests over 512KB will be buffered in a temporary file. Can be configured using the ``inbuf_overflow`` argument to :class:`WSGIHandler`.
 -   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
--   **Breaking**: Maximum request body size is now 1GB. Can be configured using the ``max_request_body_size`` argument to :func:`serve` and :func:`configure_server`.
+-   **Breaking**: Maximum request body size is now 1GB. Can be configured using the ``max_request_body_size`` argument to :class:`WSGIHandler`.
 
 
 0.3.0
