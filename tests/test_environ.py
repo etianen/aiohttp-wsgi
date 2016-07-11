@@ -1,13 +1,12 @@
 from functools import wraps
-from tests.base import AsyncTestCase
+from tests.base import AsyncTestCase, noop_application
 
 
 def environ_application(func):
     @wraps(func)
     def do_environ_application(self, environ, start_response):
         func(self, environ)
-        start_response("200 OK", [])
-        return [b""]
+        return noop_application(environ, start_response)
     return do_environ_application
 
 

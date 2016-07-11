@@ -1,18 +1,19 @@
-# import pytest
-#
-#
-# @pytest.mark.parametrize("max_request_body_size", [3])
-# @pytest.mark.parametrize("request_data", ["foobar"])
-# def test_max_request_body_size_exceeded(response):
-#     assert response.status == 413
-#
-#
-# def infinite_body():
-#     for _ in range(100):
-#         yield b"foo"
-#
-#
-# @pytest.mark.parametrize("max_request_body_size", [10])
-# @pytest.mark.parametrize("request_data", [infinite_body()])
-# def test_max_request_body_size_exceeded_streaming(response):
-#     assert response.status == 413
+from tests.base import AsyncTestCase
+
+
+def infinite_body():
+    for _ in range(100):
+        yield b"foobar"
+
+
+class MaxRequestBodySizeTest(AsyncTestCase):
+
+    async def testMaxRequestBodySize(self):
+        async with self.server(max_request_body_size=3) as server:
+            async with server.request(data="foobar") as response:
+                self.assertEqual(response.status, 413)
+
+    async def testMaxRequestBodySizeStreaming(self):
+        async with self.server(max_request_body_size=20) as server:
+            async with server.request(data=infinite_body()) as response:
+                self.assertEqual(response.status, 413)

@@ -64,6 +64,11 @@ class TestServer:
             self.test_case.assertEqual(response.status, 200)
 
 
+def noop_application(environ, start_response):
+    start_response("200 OK", [])
+    return [b""]
+
+
 class AsyncTestCase(unittest.TestCase):
 
     def __init__(self, methodName):
@@ -86,5 +91,5 @@ class AsyncTestCase(unittest.TestCase):
         super().tearDown()
         self.loop.close()
 
-    def server(self, application, **kwargs):
+    def server(self, application=noop_application, **kwargs):
         return TestServer(self, application, **kwargs)
