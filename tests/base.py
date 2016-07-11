@@ -66,7 +66,7 @@ class TestServer:
 
 def noop_application(environ, start_response):
     start_response("200 OK", [])
-    return [b""]
+    return []
 
 
 class AsyncTestCase(unittest.TestCase):

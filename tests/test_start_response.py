@@ -1,47 +1,43 @@
-# import pytest
-#
-#
-# def custom_header_application(environ, start_response):
-#     start_response("200 OK", [
-#         ("Content-Type", "text/plain; charset=utf-8"),
-#         ("Foo", "Bar"),
-#     ])
-#     return [b"Hello world"]
-#
-#
-# @pytest.mark.parametrize("application", [custom_header_application])
-# def test_custom_response_header(response, application):
-#     assert response.headers["Foo"] == "Bar"
-#
-#
-# CHUNK = b"Hello world" * 1024
-# CHUNK_COUNT = 64
-#
-#
-# def streaming_response_application(environ, start_response):
-#     start_response("200 OK", [
-#         ("Content-Type", "text/plain; charset=utf-8"),
-#     ])
-#     for _ in range(CHUNK_COUNT):
-#         yield CHUNK
-#
-#
-# @pytest.mark.asyncio
-# @pytest.mark.parametrize("application", [streaming_response_application])
-# async def test_streaming_response(response):
-#     assert await response.read() == CHUNK * CHUNK_COUNT
-#
-#
-# def streaming_response_sync_application(environ, start_response):
-#     write = start_response("200 OK", [
-#         ("Content-Type", "text/plain; charset=utf-8"),
-#     ])
-#     for _ in range(CHUNK_COUNT):
-#         write(CHUNK)
-#     return []
-#
-#
-# @pytest.mark.asyncio
-# @pytest.mark.parametrize("application", [streaming_response_sync_application])
-# async def test_streaming_response_sync(response):
-#     assert await response.read() == CHUNK * CHUNK_COUNT
+from tests.base import AsyncTestCase
+
+
+CHUNK = b"foobar" * 1024
+CHUNK_COUNT = 64
+
+
+class StartResponseTest(AsyncTestCase):
+
+    def startResponseApplication(self, environ, start_response):
+        start_response("201 Created", [
+            ("Foo", "Bar"),
+        ])
+        return [b"foobar"]
+
+    async def testStartResponse(self):
+        async with self.server(self.startResponseApplication) as server:
+            async with server.request() as response:
+                self.assertEqual(response.status, 201)
+                self.assertEqual(response.reason, "Created")
+                self.assertEqual(response.headers["Foo"], "Bar")
+                self.assertEqual(await response.text(), "foobar")
+
+    def streamingResponseApplication(self, environ, start_response):
+        start_response("200 OK", [])
+        for _ in range(CHUNK_COUNT):
+            yield CHUNK
+
+    async def testStreamingResponse(self):
+        async with self.server(self.streamingResponseApplication) as server:
+            async with server.request() as response:
+                self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)
+
+    def streamingResponseWriteApplication(self, environ, start_response):
+        write = start_response("200 OK", [])
+        for _ in range(CHUNK_COUNT):
+            write(CHUNK)
+        return []
+
+    async def testStreamingResponseWrite(self):
+        async with self.server(self.streamingResponseWriteApplication) as server:
+            async with server.request() as response:
+                self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)

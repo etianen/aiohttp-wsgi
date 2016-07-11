@@ -20,7 +20,7 @@ class ErrorsTest(AsyncTestCase):
                     self.assertEqual(await response.text(), "Boom!")
 
     def noStartResponseApplication(self, environ, start_response):
-        return [b""]
+        return []
 
     async def testNoStartResponse(self):
         async with self.server(self.noStartResponseApplication) as server:
