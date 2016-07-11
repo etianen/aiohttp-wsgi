@@ -4,7 +4,7 @@ WSGI adapter for aiohttp.
 
 try:
     import aiohttp  # noqa
-except ImportError:
+except ImportError:  # pragma: no cover
     # The top-level API requires aiohttp, which might not be present if setup.py
     # is importing aiohttp_wsgi to get __version__.
     pass
