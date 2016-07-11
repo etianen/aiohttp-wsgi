@@ -33,6 +33,7 @@ class EnvironTest(AsyncTestCase):
         self.assertFalse(environ["wsgi.multiprocess"])
         self.assertFalse(environ["wsgi.run_once"])
         self.assertIs(environ["asyncio.loop"], self.loop)
+        self.assertIs(environ["asyncio.executor"], self.executor)
 
     async def testEnviron(self):
         async with self.server(self.assertEnviron) as server:
