@@ -28,7 +28,7 @@ application's :class:`router <aiohttp.web.UrlDispatcher>` on a particular HTTP *
 .. code:: python
 
     app = web.Application()
-    app.router.add_route("*", "/{path_info:.*}", hello)
+    app.router.add_route("*", "/{path_info:.*}", wsgi_handler)
 
 After that, run the application by :func:`run_app() <aiohttp.web.run_app>` call:
 

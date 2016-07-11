@@ -1,162 +1,133 @@
-import pytest
-
-from .conftest import server_test
-
-
-@pytest.mark.parametrize("request_method", ["GET"])
-@server_test
-def test_request_method_get(environ):
-    assert environ["REQUEST_METHOD"] == "GET"
+from functools import wraps
+from tests.base import AsyncTestCase
 
 
-@pytest.mark.parametrize("request_method", ["POST"])
-@server_test
-def test_request_method_post(environ):
-    assert environ["REQUEST_METHOD"] == "POST"
+def asserts_environ(func):
+    @wraps(func)
+    def do_asserts_environ(self, environ, start_response):
+        func(self, environ)
+        start_response("200 OK", [])
+        return [b""]
+    return do_asserts_environ
 
 
-@server_test
-def test_path_root(environ):
-    assert environ["SCRIPT_NAME"] == ""
-    assert environ["PATH_INFO"] == "/"
+class EnvironTest(AsyncTestCase):
+
+    @asserts_environ
+    def assertEnviron(self, environ):
+        self.assertEqual(environ["REQUEST_METHOD"], "GET")
+        self.assertEqual(environ["SCRIPT_NAME"], "")
+        self.assertEqual(environ["PATH_INFO"], "/")
+        self.assertEqual(environ["CONTENT_TYPE"], "")
+        self.assertEqual(environ["CONTENT_LENGTH"], "0")
+        self.assertEqual(environ["SERVER_NAME"], "127.0.0.1")
+        self.assertGreater(int(environ["SERVER_PORT"]), 0)
+        self.assertEqual(environ["REMOTE_ADDR"], "127.0.0.1")
+        self.assertEqual(environ["REMOTE_HOST"], "127.0.0.1")
+        self.assertGreater(int(environ["REMOTE_PORT"]), 0)
+        self.assertEqual(environ["SERVER_PROTOCOL"], "HTTP/1.1")
+        self.assertEqual(environ["wsgi.url_scheme"], "http")
+        self.assertTrue(hasattr(environ["wsgi.errors"], "write"))
+        self.assertTrue(environ["wsgi.multithread"])
+        self.assertFalse(environ["wsgi.multiprocess"])
+        self.assertFalse(environ["wsgi.run_once"])
+        self.assertIs(environ["asyncio.loop"], self.loop)
+
+    async def testEnviron(self):
+        async with self.server(self.assertEnviron) as server:
+            await server.assertResponse()
+
+    @asserts_environ
+    def assertEnvironSubdir(self, environ):
+        self.assertEqual(environ["SCRIPT_NAME"], "")
+        self.assertEqual(environ["PATH_INFO"], "/foo")
+
+    async def testEnvironSubdir(self):
+        async with self.server(self.assertEnvironSubdir) as server:
+            await server.assertResponse(path="/foo")
 
 
-@pytest.mark.parametrize("request_path", ["/foo"])
-@server_test
-def test_path_subdir(environ):
-    assert environ["SCRIPT_NAME"] == ""
-    assert environ["PATH_INFO"] == "/foo"
+# @pytest.mark.parametrize("request_method", ["POST"])
+# @server_test
+# def test_request_method_post(environ):
+#     self.assertEqual(environ["REQUEST_METHOD"], "POST")
 
 
-# https://github.com/etianen/aiohttp-wsgi/issues/5
-@pytest.mark.parametrize("request_path", ["/Test%20%C3%A1%20%C3%B3"])
-@server_test
-def test_path_quoted(environ):
-    assert environ["SCRIPT_NAME"] == ""
-    assert environ["PATH_INFO"] == "/Test%20%C3%A1%20%C3%B3"
+# @pytest.mark.parametrize("request_path", ["/foo"])
+# @server_test
+# def test_path_subdir(environ):
+#
+#
+#
+#
+# # https://github.com/etianen/aiohttp-wsgi/issues/5
+# @pytest.mark.parametrize("request_path", ["/Test%20%C3%A1%20%C3%B3"])
+# @server_test
+# def test_path_quoted(environ):
+#     self.assertEqual(environ["SCRIPT_NAME"], "")
+#     self.assertEqual(environ["PATH_INFO"], "/Test%20%C3%A1%20%C3%B3")
+#
+#
+# @pytest.mark.parametrize("script_name", ["/foo"])
+# @pytest.mark.parametrize("request_path", ["/foo"])
+# @server_test
+# def test_path_root_subdir(environ):
+#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+#     self.assertEqual(environ["PATH_INFO"], "")
+#
+#
+# @pytest.mark.parametrize("script_name", ["/foo"])
+# @pytest.mark.parametrize("request_path", ["/foo/"])
+# @server_test
+# def test_path_root_subdir_slash(environ):
+#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+#     self.assertEqual(environ["PATH_INFO"], "/")
+#
+#
+# @pytest.mark.parametrize("script_name", ["/foo"])
+# @pytest.mark.parametrize("request_path", ["/foo/bar"])
+# @server_test
+# def test_path_root_subdir_trailing(environ):
+#     self.assertEqual(environ["SCRIPT_NAME"], "/foo")
+#     self.assertEqual(environ["PATH_INFO"], "/bar")
+#
+#
+# @pytest.mark.parametrize("request_headers", [{"Content-Type": "text/plain"}])
+# @server_test
+# def test_content_type_set(environ):
+#     self.assertEqual(environ["CONTENT_TYPE"], "text/plain")
+
+# @pytest.mark.parametrize("request_method", ["POST"])
+# @pytest.mark.parametrize("request_data", [b"foobar"])
+# @server_test
+# def test_content_length_post(environ):
+#     self.assertEqual(environ["CONTENT_LENGTH"], "6")
+
+#
+# @server_test
+# def test_wsgi_version(environ):
+#     self.assertEqual(environ["wsgi.version"], (1, 0))
+#
+#
+# @server_test
+# def test_url_scheme(environ):
+#
+#
+#
+# @pytest.mark.parametrize("url_scheme", ["https"])
+# @server_test
+# def test_url_scheme_https(environ):
+#     self.assertEqual(environ["wsgi.url_scheme"], "https")
+#
+#
+# @pytest.mark.parametrize("request_method", ["POST"])
+# @pytest.mark.parametrize("request_data", [b"foobar"])
+# @server_test
+# def test_wsgi_input(environ):
+#     self.assertEqual(environ["wsgi.input"].read(6), b"foobar")
 
 
-@pytest.mark.parametrize("script_name", ["/foo"])
-@pytest.mark.parametrize("request_path", ["/foo"])
-@server_test
-def test_path_root_subdir(environ):
-    assert environ["SCRIPT_NAME"] == "/foo"
-    assert environ["PATH_INFO"] == ""
-
-
-@pytest.mark.parametrize("script_name", ["/foo"])
-@pytest.mark.parametrize("request_path", ["/foo/"])
-@server_test
-def test_path_root_subdir_slash(environ):
-    assert environ["SCRIPT_NAME"] == "/foo"
-    assert environ["PATH_INFO"] == "/"
-
-
-@pytest.mark.parametrize("script_name", ["/foo"])
-@pytest.mark.parametrize("request_path", ["/foo/bar"])
-@server_test
-def test_path_root_subdir_trailing(environ):
-    assert environ["SCRIPT_NAME"] == "/foo"
-    assert environ["PATH_INFO"] == "/bar"
-
-
-@server_test
-def test_content_type_empty(environ):
-    assert environ["CONTENT_TYPE"] == ""
-
-
-@pytest.mark.parametrize("request_headers", [{"Content-Type": "text/plain"}])
-@server_test
-def test_content_type_set(environ):
-    assert environ["CONTENT_TYPE"] == "text/plain"
-
-
-@server_test
-def test_content_length_empty(environ):
-    assert environ["CONTENT_LENGTH"] == "0"
-
-
-@pytest.mark.parametrize("request_method", ["POST"])
-@pytest.mark.parametrize("request_data", [b"foobar"])
-@server_test
-def test_content_length_post(environ):
-    assert environ["CONTENT_LENGTH"] == "6"
-
-
-@server_test
-def test_server_name(environ):
-    assert environ["SERVER_NAME"] == "127.0.0.1"
-
-
-@server_test
-def test_server_port(environ):
-    assert int(environ["SERVER_PORT"])
-
-
-@server_test
-def test_remote_addr(environ):
-    assert environ["REMOTE_ADDR"] == "127.0.0.1"
-
-
-@server_test
-def test_remote_host(environ):
-    assert environ["REMOTE_HOST"] == "127.0.0.1"
-
-
-@server_test
-def test_remote_port(environ):
-    assert int(environ["REMOTE_PORT"])
-
-
-@server_test
-def test_server_protocol(environ):
-    assert environ["SERVER_PROTOCOL"] == "HTTP/1.1"
-
-
-@server_test
-def test_wsgi_version(environ):
-    assert environ["wsgi.version"] == (1, 0)
-
-
-@server_test
-def test_url_scheme(environ):
-    assert environ["wsgi.url_scheme"] == "http"
-
-
-@pytest.mark.parametrize("url_scheme", ["https"])
-@server_test
-def test_url_scheme_https(environ):
-    assert environ["wsgi.url_scheme"] == "https"
-
-
-@pytest.mark.parametrize("request_method", ["POST"])
-@pytest.mark.parametrize("request_data", [b"foobar"])
-@server_test
-def test_wsgi_input(environ):
-    assert environ["wsgi.input"].read(6) == b"foobar"
-
-
-@server_test
-def test_wsgi_errors(environ):
-    assert hasattr(environ["wsgi.errors"], "write")
-
-
-@server_test
-def test_multithread(environ):
-    assert environ["wsgi.multithread"] is True
-
-
-@server_test
-def test_multiprocess(environ):
-    assert environ["wsgi.multiprocess"] is False
-
-
-@server_test
-def test_run_once(environ):
-    assert environ["wsgi.run_once"] is False
-
-
-@pytest.mark.parametrize("request_headers", [{"Foo": "Bar"}])
-@server_test
-def test_custom_header(environ):
-    assert environ["HTTP_FOO"] == "Bar"
+# @pytest.mark.parametrize("request_headers", [{"Foo": "Bar"}])
+# @server_test
+# def test_custom_header(environ):
+#     self.assertEqual(environ["HTTP_FOO"], "Bar")
