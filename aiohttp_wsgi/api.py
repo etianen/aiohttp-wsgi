@@ -178,7 +178,7 @@ DEFAULTS.update(start_server.__kwdefaults__)
 HELP = HELP.copy()
 HELP.update({
     "host": "Host interfaces to bind. Defaults to ``'0.0.0.0'`` and ``'::'``.",
-    "port": "Port to bind. Defaults to ``{port!r}``".format(**DEFAULTS),
+    "port": "Port to bind. Defaults to ``{port!r}``.".format(**DEFAULTS),
     "unix_socket": "Path to a unix socket to bind, cannot be used with ``host``.",
     "unix_socket_perms": (
         "Filesystem permissions to apply to the unix socket. Defaults to ``{unix_socket_perms!r}``."

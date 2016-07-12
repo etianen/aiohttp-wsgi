@@ -3,46 +3,73 @@ import logging
 from aiohttp_wsgi.api import serve, DEFAULTS, HELP
 
 
+parser = argparse.ArgumentParser(
+    description="Run a WSGI application.",
+    allow_abbrev=False,
+)
+
+
+def add_argument(name, *aliases, **kwargs):
+    varname = name.strip("-").replace("-", "_")
+    kwargs.setdefault("help", HELP.get(varname, "").replace("``", ""))
+    assert kwargs["help"]
+    kwargs.setdefault("action", "store")
+    if kwargs["action"] in ("append", "count"):
+        kwargs["help"] += " Can be specified multiple times."
+    kwargs.setdefault("default", DEFAULTS.get(varname))
+    if kwargs["action"] == "count":
+        kwargs.setdefault("default", 0)
+    else:
+        kwargs.setdefault("type", type(kwargs["default"]))
+        assert not isinstance(None, kwargs["type"])
+    parser.add_argument(name, *aliases, **kwargs)
+
+
+add_argument(
+    "application",
+    metavar="module:application",
+    type=str,
+)
+add_argument(
+    "--host",
+    type=str,
+    action="append",
+)
+add_argument(
+    "--port",
+    "-p",
+)
+add_argument(
+    "--unix-socket",
+    type=str,
+)
+add_argument(
+    "--unix-socket-perms",
+)
+add_argument(
+    "--backlog",
+)
+add_argument(
+    "--script-name",
+)
+add_argument(
+    "--shutdown-timeout",
+)
+add_argument(
+    "--verbose",
+    "-v",
+    action="count",
+    help="Increase verbosity.",
+)
+add_argument(
+    "--quiet",
+    "-q",
+    action="count",
+    help="Decrease verbosity.",
+)
+
+
 def main():
-    arg_help = HELP.copy()
-    # Set up the argument parser.
-    parser = argparse.ArgumentParser(
-        description="Run a WSGI application.",
-    )
-    parser.add_argument(
-        "application",
-        metavar="module:application",
-        type=str,
-        help=arg_help.pop("application").replace("``", ""),
-    )
-    parser.add_argument(
-        "--host",
-        action="append",
-        help="{}. Can be specified multiple times.".format(arg_help.pop("host").replace("``", ""))
-    )
-    for arg_name, arg_help in sorted(arg_help.items()):
-        arg_default = DEFAULTS[arg_name]
-        parser.add_argument(
-            "--{}".format(arg_name.replace("_", "-")),
-            default=arg_default,
-            help=arg_help.replace("``", ""),
-            type=type(arg_default) if arg_default is not None else str,
-        )
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="count",
-        default=0,
-        help="Increase verbosity. Can be specified multiple times.",
-    )
-    parser.add_argument(
-        "--quiet",
-        "-q",
-        action="count",
-        default=0,
-        help="Decrease verbosity. Can be specified multiple times.",
-    )
-    # Parse the arguments.
     args = vars(parser.parse_args())
     # Set up logging.
     verbosity = (args.pop("verbose") - args.pop("quiet")) * 10
