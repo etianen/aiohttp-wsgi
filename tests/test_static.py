@@ -9,7 +9,9 @@ class StaticTest(AsyncTestCase):
 
     async def testStaticMiss(self):
         async with await self.start_server(static=(("/static", STATIC_DIR),)) as server:
-            await self.assertResponse(server, "GET", "/")
+            async with await server.request("GET", "/") as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(await response.text(), "")
 
     async def testStaticHit(self):
         async with await self.start_server(static=(("/static", STATIC_DIR),)) as server:
