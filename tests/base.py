@@ -4,7 +4,7 @@ import unittest
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
 from tempfile import NamedTemporaryFile
-from aiohttp_wsgi import start_server
+from aiohttp_wsgi.api import start_server
 
 
 def noop_application(environ, start_response):
