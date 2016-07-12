@@ -1,5 +1,6 @@
 import argparse
 import logging
+import aiohttp_wsgi
 from aiohttp_wsgi.api import serve, DEFAULTS, HELP
 
 
@@ -11,15 +12,17 @@ parser = argparse.ArgumentParser(
 
 def add_argument(name, *aliases, **kwargs):
     varname = name.strip("-").replace("-", "_")
+    # Format help.
     kwargs.setdefault("help", HELP.get(varname, "").replace("``", ""))
     assert kwargs["help"]
+    # Parse action.
     kwargs.setdefault("action", "store")
     if kwargs["action"] in ("append", "count"):
         kwargs["help"] += " Can be specified multiple times."
-    kwargs.setdefault("default", DEFAULTS.get(varname))
     if kwargs["action"] == "count":
         kwargs.setdefault("default", 0)
-    else:
+    if kwargs["action"] == "store":
+        kwargs.setdefault("default", DEFAULTS.get(varname))
         kwargs.setdefault("type", type(kwargs["default"]))
         assert not isinstance(None, kwargs["type"])
     parser.add_argument(name, *aliases, **kwargs)
@@ -66,6 +69,12 @@ add_argument(
     "-q",
     action="count",
     help="Decrease verbosity.",
+)
+add_argument(
+    "--version",
+    action="version",
+    help="Display version information.",
+    version="aiohttp-wsgi v{}".format(".".join(map(str, aiohttp_wsgi.__version__))),
 )
 
 
