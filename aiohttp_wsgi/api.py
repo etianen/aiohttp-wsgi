@@ -4,7 +4,7 @@ import aiohttp
 from aiohttp.log import access_logger
 from aiohttp.web import Application, StaticRoute
 from aiohttp_wsgi.wsgi import WSGIHandler
-from aiohttp_wsgi.utils import parse_sockname
+from aiohttp_wsgi.utils import parse_sockname, import_func
 
 
 class Server:
@@ -98,7 +98,7 @@ async def start_server(
     )
     # Add routes.
     for method, path, handler in routes:
-        app.router.add_route(method, path, handler)
+        app.router.add_route(method, path, import_func(handler))
     # Add static routes.
     for path, dirname in static:
         assert not path.endswith("/"), "Static path should not end with /"
@@ -106,7 +106,7 @@ async def start_server(
         static_resource.add_route("*", StaticRoute(None, path + "/", dirname).handle)
     # Add on finish callbacks.
     for on_finish_callback in on_finish:
-        app.on_shutdown.append(on_finish_callback)
+        app.on_shutdown.append(import_func(on_finish_callback))
     # The WSGI spec says that script name should not end with a slash. However,
     # aiohttp wants all route paths to start with a forward slash. This means
     # we need a special case for mounting on the root.
@@ -117,7 +117,7 @@ async def start_server(
     # Add the wsgi application. This has to be last.
     app.router.add_route(
         "*",
-        "{}{{path_info:.*}}".format(script_name), WSGIHandler(application, loop=loop, **kwargs),
+        "{}{{path_info:.*}}".format(script_name), WSGIHandler(import_func(application), loop=loop, **kwargs),
     )
     handler = app.make_handler(access_log=access_log)
     # Set up the server.

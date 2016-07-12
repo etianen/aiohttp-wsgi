@@ -36,7 +36,7 @@ class AsyncTestCase(unittest.TestCase):
         super().tearDown()
         self.loop.close()
 
-    async def _start_server(self, application=noop_application, **kwargs):
+    async def _start_server(self, application="tests.base:noop_application", **kwargs):
         return await start_server(
             application,
             loop=self.loop,
