@@ -53,6 +53,15 @@ add_argument(
     "--backlog",
 )
 add_argument(
+    "--static",
+    action="append",
+    default=[],
+    help=(
+        "Static route mappings in the form 'path=directory'. "
+        "`path` must start with a slash, but not end with a slash."
+    ),
+)
+add_argument(
     "--script-name",
 )
 add_argument(

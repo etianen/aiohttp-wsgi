@@ -260,6 +260,7 @@ class WSGIResponse:
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
         asyncio.run_coroutine_threadsafe(self._write(data), loop=self._handler._loop).result()
 
+
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
 
 HELP = {

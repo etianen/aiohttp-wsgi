@@ -68,6 +68,14 @@ class Server:
         return await self._session.request(method, uri, **kwargs)
 
 
+def format_path(path):
+    assert not path.endswith("/"), "{!r} name should not end with /".format(path)
+    if path == "":
+        path = "/"
+    assert path.startswith("/"), "{!r} name should start with /".format(path)
+    return path
+
+
 async def start_server(
     application,
     *,
@@ -101,24 +109,21 @@ async def start_server(
     for method, path, handler in routes:
         app.router.add_route(method, path, import_func(handler))
     # Add static routes.
-    for path, dirname in static:
-        assert not path.endswith("/"), "Static path should not end with /"
-        static_resource = app.router.add_resource("{}/{{filename:.*}}".format(path))
+    for static_item in static:
+        if isinstance(static_item, str):
+            assert "=" in static_item, "{!r} should have format 'path=directory'"
+            static_item = static_item.split("=", 1)
+        path, dirname = static_item
+        static_resource = app.router.add_resource("{}/{{filename:.*}}".format(format_path(path)))
         static_resource.add_route("*", StaticRoute(None, path + "/", dirname).handle)
     # Add on finish callbacks.
     for on_finish_callback in on_finish:
         app.on_shutdown.append(import_func(on_finish_callback))
-    # The WSGI spec says that script name should not end with a slash. However,
-    # aiohttp wants all route paths to start with a forward slash. This means
-    # we need a special case for mounting on the root.
-    assert not script_name.endswith("/"), "Script name should not end with /"
-    if script_name == "":
-        script_name = "/"
-    assert script_name.startswith("/"), "Script name should start with /"
     # Add the wsgi application. This has to be last.
     app.router.add_route(
         "*",
-        "{}{{path_info:.*}}".format(script_name), WSGIHandler(import_func(application), loop=loop, **kwargs),
+        "{}{{path_info:.*}}".format(format_path(script_name)),
+        WSGIHandler(import_func(application), loop=loop, **kwargs),
     )
     handler = app.make_handler(access_log=access_log)
     # Set up the server.
@@ -171,6 +176,7 @@ def serve(application, *, loop=None, **kwargs):  # pragma: no cover
         loop.run_until_complete(server.wait_closed())
         loop.close()
         server.app.logger.info("Stopped serving on %s", server_uri)
+
 
 DEFAULTS = DEFAULTS.copy()
 DEFAULTS.update(start_server.__kwdefaults__)
