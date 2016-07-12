@@ -37,8 +37,8 @@ class EnvironTest(AsyncTestCase):
         self.assertIn("aiohttp.request", environ)
 
     async def testEnviron(self):
-        async with self.server(self.assertEnviron) as server:
-            await server.assertResponse(headers={
+        async with await self.start_server(self.assertEnviron) as server:
+            await self.assertResponse(server, "GET", "/", headers={
                 "Foo": "bar",
             })
 
@@ -50,12 +50,31 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["wsgi.input"].read(), b"foobar")
 
     async def testEnvironPost(self):
-        async with self.server(self.assertEnvironPost) as server:
-            await server.assertResponse(
-                method="POST",
+        async with await self.start_server(self.assertEnvironPost) as server:
+            await self.assertResponse(
+                server, "POST", "/",
                 headers={"Content-Type": "text/plain"},
                 data=b"foobar",
             )
+
+    @environ_application
+    def assertEnvironUrlScheme(self, environ):
+        self.assertEqual(environ["wsgi.url_scheme"], "https")
+
+    async def testEnvironUrlScheme(self):
+        async with await self.start_server(self.assertEnvironUrlScheme, url_scheme="https") as server:
+            await self.assertResponse(server, "GET", "/")
+
+    @environ_application
+    def assertEnvironUnixSocket(self, environ):
+        self.assertEqual(environ["SERVER_NAME"], "unix")
+        self.assertTrue(environ["SERVER_PORT"].startswith("/"))
+        self.assertEqual(environ["REMOTE_HOST"], "unix")
+        self.assertEqual(environ["REMOTE_PORT"], "")
+
+    async def testEnvironUnixSocket(self):
+        async with await self.start_unix_server(self.assertEnvironUnixSocket) as server:
+            await self.assertResponse(server, "GET", "/")
 
     @environ_application
     def assertEnvironSubdir(self, environ):
@@ -63,8 +82,8 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["PATH_INFO"], "/foo")
 
     async def testEnvironSubdir(self):
-        async with self.server(self.assertEnvironSubdir) as server:
-            await server.assertResponse(path="/foo")
+        async with await self.start_server(self.assertEnvironSubdir) as server:
+            await self.assertResponse(server, "GET", "/foo")
 
     @environ_application
     def assertEnvironSubdirQuoted(self, environ):
@@ -72,8 +91,8 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["PATH_INFO"], "/foo%20")
 
     async def testEnvironSubdirQuoted(self):
-        async with self.server(self.assertEnvironSubdirQuoted) as server:
-            await server.assertResponse(path="/foo%20")
+        async with await self.start_server(self.assertEnvironSubdirQuoted) as server:
+            await self.assertResponse(server, "GET", "/foo%20")
 
     @environ_application
     def assertEnvironRootSubdir(self, environ):
@@ -81,8 +100,8 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["PATH_INFO"], "")
 
     async def testEnvironRootSubdir(self):
-        async with self.server(self.assertEnvironRootSubdir, script_name="/foo") as server:
-            await server.assertResponse(path="/foo")
+        async with await self.start_server(self.assertEnvironRootSubdir, script_name="/foo") as server:
+            await self.assertResponse(server, "GET", "/foo")
 
     @environ_application
     def assertEnvironRootSubdirSlash(self, environ):
@@ -90,8 +109,8 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["PATH_INFO"], "/")
 
     async def testEnvironRootSubdirSlash(self):
-        async with self.server(self.assertEnvironRootSubdirSlash, script_name="/foo") as server:
-            await server.assertResponse(path="/foo/")
+        async with await self.start_server(self.assertEnvironRootSubdirSlash, script_name="/foo") as server:
+            await self.assertResponse(server, "GET", "/foo/")
 
     @environ_application
     def assertEnvironRootSubdirTrailing(self, environ):
@@ -99,13 +118,5 @@ class EnvironTest(AsyncTestCase):
         self.assertEqual(environ["PATH_INFO"], "/bar")
 
     async def testEnvironRootSubdirTrailing(self):
-        async with self.server(self.assertEnvironRootSubdirTrailing, script_name="/foo") as server:
-            await server.assertResponse(path="/foo/bar")
-
-    @environ_application
-    def assertEnvironUrlScheme(self, environ):
-        self.assertEqual(environ["wsgi.url_scheme"], "https")
-
-    async def testEnvironUrlScheme(self):
-        async with self.server(self.assertEnvironUrlScheme, url_scheme="https") as server:
-            await server.assertResponse()
+        async with await self.start_server(self.assertEnvironRootSubdirTrailing, script_name="/foo") as server:
+            await self.assertResponse(server, "GET", "/foo/bar")

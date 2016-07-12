@@ -14,8 +14,8 @@ class StartResponseTest(AsyncTestCase):
         return [b"foobar"]
 
     async def testStartResponse(self):
-        async with self.server(self.startResponseApplication) as server:
-            async with server.request() as response:
+        async with await self.start_server(self.startResponseApplication) as server:
+            async with await server.request("GET", "/") as response:
                 self.assertEqual(response.status, 201)
                 self.assertEqual(response.reason, "Created")
                 self.assertEqual(response.headers["Foo"], "Bar")
@@ -27,8 +27,8 @@ class StartResponseTest(AsyncTestCase):
             yield CHUNK
 
     async def testStreamingResponse(self):
-        async with self.server(self.streamingResponseApplication) as server:
-            async with server.request() as response:
+        async with await self.start_server(self.streamingResponseApplication) as server:
+            async with await server.request("GET", "/") as response:
                 self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)
 
     def streamingResponseWriteApplication(self, environ, start_response):
@@ -38,6 +38,6 @@ class StartResponseTest(AsyncTestCase):
         return []
 
     async def testStreamingResponseWrite(self):
-        async with self.server(self.streamingResponseWriteApplication) as server:
-            async with server.request() as response:
+        async with await self.start_server(self.streamingResponseWriteApplication) as server:
+            async with await server.request("GET", "/") as response:
                 self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)

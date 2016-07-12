@@ -9,11 +9,11 @@ def infinite_body():
 class MaxRequestBodySizeTest(AsyncTestCase):
 
     async def testMaxRequestBodySize(self):
-        async with self.server(max_request_body_size=3) as server:
-            async with server.request(data="foobar") as response:
+        async with await self.start_server(max_request_body_size=3) as server:
+            async with await server.request("GET", "/", data="foobar") as response:
                 self.assertEqual(response.status, 413)
 
     async def testMaxRequestBodySizeStreaming(self):
-        async with self.server(max_request_body_size=20) as server:
-            async with server.request(data=infinite_body()) as response:
+        async with await self.start_server(max_request_body_size=20) as server:
+            async with await server.request("GET", "/", data=infinite_body()) as response:
                 self.assertEqual(response.status, 413)

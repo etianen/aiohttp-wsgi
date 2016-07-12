@@ -13,9 +13,9 @@ class ErrorsTest(AsyncTestCase):
             return [b"Boom!"]
 
     async def testErrorHandling(self):
-        async with self.server(self.errorHandlingApplication) as server:
+        async with await self.start_server(self.errorHandlingApplication) as server:
             with self.assertLogs("aiohttp.web", "ERROR"):
-                async with server.request() as response:
+                async with await server.request("GET", "/") as response:
                     self.assertEqual(response.status, 509)
                     self.assertEqual(await response.text(), "Boom!")
 
@@ -23,9 +23,9 @@ class ErrorsTest(AsyncTestCase):
         return []
 
     async def testNoStartResponse(self):
-        async with self.server(self.noStartResponseApplication) as server:
+        async with await self.start_server(self.noStartResponseApplication) as server:
             with self.assertLogs("aiohttp.web", "ERROR"):
-                async with server.request() as response:
+                async with await server.request("GET", "/") as response:
                     self.assertEqual(response.status, 500)
 
     def startResponseTwiceApplication(self, environ, start_response):
@@ -37,9 +37,9 @@ class ErrorsTest(AsyncTestCase):
         ])
 
     async def testStartResponseTwice(self):
-        async with self.server(self.startResponseTwiceApplication) as server:
+        async with await self.start_server(self.startResponseTwiceApplication) as server:
             with self.assertLogs("aiohttp.web", "ERROR"):
-                async with server.request() as response:
+                async with await server.request("GET", "/") as response:
                     self.assertEqual(response.status, 500)
 
     def errorAfterWriteApplication(self, environ, start_response):
@@ -56,6 +56,9 @@ class ErrorsTest(AsyncTestCase):
 
     async def testErrorAfterWrite(self):
         with self.assertLogs("aiohttp.web", "ERROR"):
-            async with self.server(self.errorAfterWriteApplication) as server:
-                async with server.request() as response:
-                    self.assertEqual(response.status, 509)
+            async with await self.start_server(self.errorAfterWriteApplication) as server:
+                # Don't use the response context manager as the client body is garbled.
+                response = await server.request("GET", "/")
+                self.assertEqual(response.status, 509)
+                response.close()
+                await response.wait_for_close()
