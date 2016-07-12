@@ -1,10 +1,10 @@
 """
-Command-line interface (CLI)
+Command line interface (CLI)
 ============================
 
 If you don't need to add :ref:`websockets <aiohttp-web-websockets>` or
 :ref:`async request handlers <aiohttp-web-handler>` to your app, but still want to run your WSGI app on the
-:mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler command-line interface.
+:mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler command line interface.
 
 
 Example usage

@@ -11,7 +11,7 @@ This allows you to add async features like websockets and long-polling to an exi
 
     If you don't need to add :ref:`websockets <aiohttp-web-websockets>` or
     :ref:`async request handlers <aiohttp-web-handler>` to your app, but still want to run your WSGI app on the
-    :mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler :doc:`command-line interface <main>`.
+    :mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler :doc:`command line interface <main>`.
 
 
 Run a simple web server

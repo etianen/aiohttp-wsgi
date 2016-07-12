@@ -7,6 +7,7 @@ Latest
 ------
 
 -   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
+-   Added :doc:`aiohttp-wsgi-server <main>` command line interface.
 -   **Breaking:** Removed support for Python 3.4.
 -   **Breaking:** Removed ``aiohttp.concurrent`` helpers, which are no longer required with Python 3.5+.
 -   **Breaking:** Removed ``configure_server()`` and ``close_server()`` helpers. Use :class:`WSGIHandler` directly.
