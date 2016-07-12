@@ -13,6 +13,9 @@ setup(
     install_requires=[
         "aiohttp>=0.21.6",
     ],
+    entry_points={
+        "console_scripts": ["aiohttp-wsgi-serve=aiohttp_wsgi.__main__:main"],
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Web Environment",

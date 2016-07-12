@@ -7,6 +7,12 @@ Running a WSGI app
 :mod:`aiohttp_wsgi` allows you to run WSGI applications (e.g. `Django`_, `Flask`_) on :ref:`aiohttp <aiohttp-web>`.
 This allows you to add async features like websockets and long-polling to an existing Python web app.
 
+.. hint::
+
+    If you don't need to add :ref:`websockets <aiohttp-web-websockets>` or
+    :ref:`async request handlers <aiohttp-web-handler>` to your app, but still want to run your WSGI app on the
+    :mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler :doc:`command-line interface <main>`.
+
 
 Run a simple web server
 -----------------------

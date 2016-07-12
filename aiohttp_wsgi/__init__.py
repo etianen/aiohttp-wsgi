@@ -29,6 +29,7 @@ Usage
 
     installation
     wsgi
+    main
 
 
 More information
@@ -51,7 +52,6 @@ except ImportError:  # pragma: no cover
     # is importing aiohttp_wsgi to get __version__.
     pass
 else:
-    from aiohttp_wsgi.api import Server, start_server, serve  # noqa
     from aiohttp_wsgi.wsgi import WSGIHandler  # noqa
 
 

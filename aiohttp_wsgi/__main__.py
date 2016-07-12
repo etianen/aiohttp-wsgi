@@ -1,10 +1,50 @@
+"""
+Command-line interface (CLI)
+============================
+
+If you don't need to add :ref:`websockets <aiohttp-web-websockets>` or
+:ref:`async request handlers <aiohttp-web-handler>` to your app, but still want to run your WSGI app on the
+:mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler command-line interface.
+
+
+Example usage
+-------------
+
+Serve a WSGI application called ``application``, located in the ``your_project.wsgi`` module:
+
+.. code:: bash
+
+    aiohttp-wsgi-serve your_project.wsgi:application
+
+Serve a WSGI application and include a static file directory.
+
+.. code:: bash
+
+    aiohttp-wsgi-serve your_project.wsgi:application --static /static=./static
+
+
+Command reference
+-----------------
+
+You can view this reference at any time with ``aiohttp-wsgi-serve --help``.
+
+.. code:: bash
+
+{help}
+
+
+.. include:: /_include/links.rst
+"""
+
 import argparse
 import logging
+import textwrap
 import aiohttp_wsgi
 from aiohttp_wsgi.api import serve, DEFAULTS, HELP
 
 
 parser = argparse.ArgumentParser(
+    prog="aiohttp-wsgi-serve",
     description="Run a WSGI application.",
     allow_abbrev=False,
 )
@@ -105,6 +145,9 @@ def main():
     logging.getLogger("aiohttp").setLevel(max(logging.INFO - verbosity, logging.DEBUG))
     # Serve the app.
     serve(**args)
+
+
+__doc__ = __doc__.format(**HELP, help=textwrap.indent(parser.format_help(), "    "))
 
 
 if __name__ == "__main__":
