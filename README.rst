@@ -10,7 +10,7 @@ WSGI adapter for `aiohttp <http://aiohttp.readthedocs.io/en/stable/web.html>`_.
 Features
 --------
 
--   Run WSGI applications (e.g. `Django`_, `Flask`_) on `aiohttp <http://aiohttp.readthedocs.io/en/stable/web.html>`_.
+-   Run WSGI applications (e.g. `Django <https://www.djangoproject.com/>`_, `Flask <http://flask.pocoo.org/>`_) on `aiohttp <http://aiohttp.readthedocs.io/en/stable/web.html>`_.
 -   Handle thousands of client connections, using `asyncio <https://docs.python.org/3/library/asyncio.html>`_.
 -   Add `websockets <http://aiohttp.readthedocs.io/en/stable/web.html#websockets>`_ to your existing Python web app!
 
