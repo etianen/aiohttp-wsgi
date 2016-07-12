@@ -13,7 +13,7 @@ def parse_sockname(sockname):
 
 def import_func(func):
     if isinstance(func, str):
-        assert ":" in func, "{!r} should be of the form 'module.path:callable'".format(func)
+        assert ":" in func, "{!r} should have format 'module:callable'".format(func)
         module_name, func_name = func.split(":", 1)
         module = import_module(module_name)
         func = getattr(module, func_name)

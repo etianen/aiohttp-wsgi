@@ -3,7 +3,7 @@ import os
 import aiohttp
 from aiohttp.log import access_logger
 from aiohttp.web import Application, StaticRoute
-from aiohttp_wsgi.wsgi import WSGIHandler
+from aiohttp_wsgi.wsgi import WSGIHandler, DEFAULTS, HELP
 from aiohttp_wsgi.utils import parse_sockname, import_func
 
 
@@ -69,7 +69,8 @@ class Server:
 
 
 async def start_server(
-    application, *,
+    application,
+    *,
     # Server config.
     host=None,
     port=8080,
@@ -153,7 +154,12 @@ async def start_server(
 def serve(application, *, loop=None, **kwargs):  # pragma: no cover
     loop = loop or asyncio.get_event_loop()
     server = loop.run_until_complete(start_server(application, loop=loop, **kwargs))
-    server.app.logger.info("Serving on http://%s:%s", *parse_sockname(server.sockets[0].getsockname()))
+    server_uri = " ".join(
+        "http://{}:{}".format(*parse_sockname(socket.getsockname()))
+        for socket
+        in server.sockets
+    )
+    server.app.logger.info("Serving on %s", server_uri)
     try:
         loop.run_forever()
     except KeyboardInterrupt:
@@ -164,4 +170,25 @@ def serve(application, *, loop=None, **kwargs):  # pragma: no cover
         server.app.logger.debug("Waiting for client connections to terminate")
         loop.run_until_complete(server.wait_closed())
         loop.close()
-        server.app.logger.info("Server has shut down")
+        server.app.logger.info("Stopped serving on %s", server_uri)
+
+DEFAULTS = DEFAULTS.copy()
+DEFAULTS.update(start_server.__kwdefaults__)
+
+HELP = HELP.copy()
+HELP.update({
+    "host": "Host interfaces to bind. Defaults to ``'0.0.0.0'`` and ``'::'``.",
+    "port": "Port to bind. Defaults to ``{port!r}``".format(**DEFAULTS),
+    "unix_socket": "Path to a unix socket to bind, cannot be used with ``host``.",
+    "unix_socket_perms": (
+        "Filesystem permissions to apply to the unix socket. Defaults to ``{unix_socket_perms!r}``."
+    ).format(**DEFAULTS),
+    "backlog": "Socket connection backlog. Defaults to {backlog!r}.".format(**DEFAULTS),
+    "script_name": (
+        "URL prefix for the WSGI application, should start with a slash, but not end with a slash. "
+        "Defaults to ``{script_name!r}``."
+    ).format(**DEFAULTS),
+    "shutdown_timeout": (
+        "Timeout when closing client connections on server shutdown. Defaults to ``{shutdown_timeout!r}``."
+    ).format(**DEFAULTS),
+})

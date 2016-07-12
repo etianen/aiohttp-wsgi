@@ -69,8 +69,8 @@ API reference
 import asyncio
 import sys
 import tempfile
-from wsgiref.util import is_hop_by_hop
 from urllib.parse import quote
+from wsgiref.util import is_hop_by_hop
 from aiohttp.web import Response, StreamResponse
 from aiohttp_wsgi.utils import parse_sockname
 
@@ -80,15 +80,12 @@ class WSGIHandler:
     """
     An adapter for WSGI applications, allowing them to run on :ref:`aiohttp <aiohttp-web>`.
 
-    :param callable application: A WSGI application callable.
-    :param str url_scheme: A hint about the URL scheme used to access the application. Corresponds to
-        ``environ["wsgi.uri_scheme"]``. Default value is auto-detected to ``"http"`` or ``"https"``.
-    :param io.BytesIO stderr: A file-like value for WSGI error logging. Corresponds to ``environ["wsgi.errors"]``.
+    :param callable application: {application}
+    :param str url_scheme: {url_scheme}
+    :param io.BytesIO stderr: A file-like value for WSGI error logging. Corresponds to ``environ['wsgi.errors']``.
         Defaults to ``sys.stderr``.
-    :param int inbuf_overflow: A tempfile will be created if the request body is larger than ``inbuf_overflow``, which
-        is measured in bytes. Defaults to 512K (524288).
-    :param int max_request_body_size: Maximum number of bytes in request body. Defaults to 1GB (1073741824). Larger
-        requests will receive a HTTP 413 (Request Entity Too Large) response.
+    :param int inbuf_overflow: {inbuf_overflow}
+    :param int max_request_body_size: {max_request_body_size}
     :param concurrent.futures.Executor executor: An Executor instance used to run WSGI requests. Defaults to the
         :mod:`asyncio` base executor.
     :param asyncio.BaseEventLoop loop: The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.
@@ -96,7 +93,8 @@ class WSGIHandler:
 
     def __init__(
         self,
-        application, *,
+        application,
+        *,
         # Handler config.
         url_scheme=None,
         stderr=None,
@@ -261,3 +259,23 @@ class WSGIResponse:
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
         asyncio.run_coroutine_threadsafe(self._write(data), loop=self._handler._loop).result()
+
+DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
+
+HELP = {
+    "application": "A WSGI application callable.",
+    "url_scheme": (
+        "A hint about the URL scheme used to access the application. Corresponds to ``environ['wsgi.uri_scheme']``. "
+        "Default is auto-detected to ``'http'`` or ``'https'``."
+    ),
+    "inbuf_overflow": (
+        "A tempfile will be created if the request body is larger than this value, which is measured in bytes. "
+        "Defaults to ``{inbuf_overflow!r}``."
+    ).format(**DEFAULTS),
+    "max_request_body_size": (
+        "Maximum number of bytes in request body. Defaults to ``{max_request_body_size!r}``. "
+        "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
+    ).format(**DEFAULTS),
+}
+
+WSGIHandler.__doc__ = WSGIHandler.__doc__.format(**HELP)
