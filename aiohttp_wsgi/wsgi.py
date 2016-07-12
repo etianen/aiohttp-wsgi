@@ -40,6 +40,22 @@ See the :ref:`aiohttp.web <aiohttp-web>` documentation for information on adding
 :ref:`websockets <aiohttp-web-websockets>` and :ref:`async request handlers <aiohttp-web-handler>` to your app.
 
 
+Extra environ keys
+------------------
+
+:mod:`aiohttp_wsgi` adds the following additional keys to the WSGI environ:
+
+``asyncio.loop``
+    The :class:`EventLoop <asyncio.BaseEventLoop>` running the server.
+
+``asyncio.executor``
+    The :class:`Executor <concurrent.futures.Executor>` running the WSGI request.
+
+``aiohttp.request``
+    The raw :class:`aiohttp.web.Request` that initiated the WSGI request. Use this to access additional
+    request :ref:`metadata <aiohttp-web-data-sharing>`.
+
+
 API reference
 -------------
 
