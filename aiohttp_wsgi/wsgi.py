@@ -255,16 +255,13 @@ class WSGIResponse:
         # Return the stream writer interface.
         return self.write
 
-    async def _write(self, data):
-        assert self._response, "Application did not call start_response()"
-        if not self._response.prepared:
-            await self._response.prepare(self._request)
-        if data:
-            self._response.write(data)
-
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
-        asyncio.run_coroutine_threadsafe(self._write(data), loop=self._handler._loop).result()
+        assert self._response, "Application did not call start_response()"
+        if not self._response.prepared:
+            asyncio.run_coroutine_threadsafe(self._response.prepare(self._request), loop=self._handler._loop).result()
+        if data:
+            self._handler._loop.call_soon_threadsafe(self._response.write, data)
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
