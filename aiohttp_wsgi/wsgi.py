@@ -266,7 +266,7 @@ DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
 HELP = {
     "application": "A WSGI application callable.",
     "url_scheme": (
-        "A hint about the URL scheme used to access the application. Corresponds to ``environ['wsgi.uri_scheme']``. "
+        "A hint about the URL scheme used to access the application. Corresponds to ``environ['wsgi.url_scheme']``. "
         "Default is auto-detected to ``'http'`` or ``'https'``."
     ),
     "inbuf_overflow": (

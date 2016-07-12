@@ -68,6 +68,16 @@ add_argument(
     "--shutdown-timeout",
 )
 add_argument(
+    "--url-scheme",
+    type=str,
+)
+add_argument(
+    "--inbuf-overflow",
+)
+add_argument(
+    "--max-request-body-size",
+)
+add_argument(
     "--verbose",
     "-v",
     action="count",
