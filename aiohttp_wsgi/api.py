@@ -2,7 +2,7 @@ import asyncio
 import os
 import aiohttp
 from aiohttp.log import access_logger
-from aiohttp.web import Application
+from aiohttp.web import Application, StaticRoute
 from aiohttp_wsgi.wsgi import WSGIHandler
 from aiohttp_wsgi.utils import parse_sockname
 
@@ -101,7 +101,9 @@ async def start_server(
         app.router.add_route(method, path, handler)
     # Add static routes.
     for path, dirname in static:
-        app.router.add_static(path, dirname)
+        assert not path.endswith("/"), "Static path should not end with /"
+        static_resource = app.router.add_resource("{}/{{filename:.*}}".format(path))
+        static_resource.add_route("*", StaticRoute(None, path + "/", dirname).handle)
     # Add on finish callbacks.
     for on_finish_callback in on_finish:
         app.on_shutdown.append(on_finish_callback)
