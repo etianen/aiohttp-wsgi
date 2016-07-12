@@ -1,4 +1,5 @@
 import asyncio
+import socket
 import unittest
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
@@ -35,24 +36,37 @@ class AsyncTestCase(unittest.TestCase):
         super().tearDown()
         self.loop.close()
 
-    async def start_server(self, application=noop_application, **kwargs):
+    async def _start_server(self, application=noop_application, **kwargs):
         return await start_server(
             application,
-            host="127.0.0.1",
             loop=self.loop,
             executor=self.executor,
             **kwargs,
         )
 
-    async def start_unix_server(self, application=noop_application, **kwargs):
+    async def start_server(self, *args, **kwargs):
+        return await self._start_server(
+            *args,
+            host="127.0.0.1",
+            **kwargs,
+        )
+
+    async def start_unix_server(self, *args, **kwargs):
         socket_file = NamedTemporaryFile()
         socket_file.close()
-        return await start_server(
-            application,
+        return await self._start_server(
+            *args,
             unix_socket=socket_file.name,
-            loop=self.loop,
-            executor=self.executor,
             access_log=None,  # Access logging is broken in aiohtp for unix sockets.
+            **kwargs,
+        )
+
+    async def start_socket_server(self, *args, **kwargs):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("127.0.0.1", 0))
+        return await self._start_server(
+            *args,
+            socket=sock,
             **kwargs,
         )
 
