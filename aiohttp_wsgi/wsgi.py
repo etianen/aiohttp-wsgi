@@ -244,12 +244,11 @@ class WSGIHandler:
 
 class WSGIResponse:
 
-    __slots__ = ("_handler", "_request", "_response",)
-
     def __init__(self, handler, request):
         self._handler = handler
         self._request = request
         # State.
+        self._started = False
         self._response = None
 
     def start_response(self, status, headers, exc_info=None):
@@ -258,7 +257,7 @@ class WSGIResponse:
             self._request.app.logger.error("Unexpected error", exc_info=exc_info)
             # Attempt to modify the response.
             try:
-                if self._response and self._response.prepared:
+                if self._started:
                     raise exc_info[1].with_traceback(exc_info[2])
                 self._response = None
             finally:
@@ -284,7 +283,8 @@ class WSGIResponse:
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
         assert self._response, "Application did not call start_response()"
-        if not self._response.prepared:
+        if not self._started:
+            self._started = True
             asyncio.run_coroutine_threadsafe(self._response.prepare(self._request), loop=self._handler._loop).result()
         if data:
             self._handler._loop.call_soon_threadsafe(self._response.write, data)
