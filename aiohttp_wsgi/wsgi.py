@@ -120,7 +120,7 @@ class WSGIHandler:
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
 
-    async def _get_environ(self, request, body, content_length):
+    def _get_environ(self, request, body, content_length):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
         script_name = request.path[:len(request.path)-len(path_info)]
@@ -206,7 +206,7 @@ class WSGIHandler:
                 body.write(block)
             body.seek(0)
             # Run the app.
-            environ = await self._get_environ(request, body, content_length)
+            environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
             await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
             # ALll done!
