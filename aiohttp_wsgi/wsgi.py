@@ -74,10 +74,11 @@ API reference
 
 import asyncio
 import sys
-import tempfile
+from io import BytesIO
+from tempfile import TemporaryFile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import Response, StreamResponse
+from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -119,6 +120,39 @@ class WSGIHandler:
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
+
+    async def _get_body(self, request):
+        # Check for body size overflow.
+        if request.content_length is not None and request.content_length > self._max_request_body_size:
+            raise HTTPRequestEntityTooLarge()
+        # Read the first chunk of the body.
+        block = await request.content.read(min(self._inbuf_overflow, self._max_request_body_size))
+        content_length = len(block)
+        # If the body hasn't overflowed, we can keep it in memory.
+        if request.content.at_eof():
+            body = BytesIO(block)
+        else:
+            # All filesystem operations need to be run in an executor.
+            body = await self._loop.run_in_executor(self._executor, TemporaryFile)
+            try:
+                while True:
+                    # Write the block.
+                    await self._loop.run_in_executor(self._executor, body.write, block)
+                    # Read a new block.
+                    block = await request.content.readany()
+                    if not block:
+                        break
+                    content_length += len(block)
+                    # Check for body size overflow. The request might be streaming, so we check with every chunk.
+                    if content_length > self._max_request_body_size:
+                        raise HTTPRequestEntityTooLarge()
+                body.seek(0)
+            except:
+                # Clean up the temporary file.
+                await self._loop.run_in_executor(self._executor, body.close)
+                raise
+        # All done!
+        return body, content_length
 
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
@@ -189,28 +223,20 @@ class WSGIHandler:
                 body_iterable.close()
 
     async def handle_request(self, request):
-        # Check for body size overflow.
-        if request.content_length is not None and request.content_length > self._max_request_body_size:
-            return Response(status=413)
-        # Read the body.
-        content_length = 0
-        with tempfile.SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
-            while True:
-                block = await request.content.readany()
-                if not block:
-                    break
-                content_length += len(block)
-                # Check for body size overflow. The request might be streaming, so we check with every chunk.
-                if content_length > self._max_request_body_size:
-                    return Response(status=413)
-                body.write(block)
-            body.seek(0)
-            # Run the app.
+        # Run the app.
+        body, content_length = await self._get_body(request)
+        try:
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
             await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
             # ALll done!
             return response._response
+        finally:
+            # Clean up the body.
+            if content_length > self._inbuf_overflow:
+                await self._loop.run_in_executor(self._executor, body.close)
+            else:
+                body.close()
 
     async def __call__(self, request):
         return await self.handle_request(request)
