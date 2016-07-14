@@ -3,8 +3,8 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
-Latest
-------
+0.5.0
+-----
 
 -   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
 -   Added :doc:`aiohttp-wsgi-serve <main>` command line interface.

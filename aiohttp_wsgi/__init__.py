@@ -55,4 +55,4 @@ else:
     from aiohttp_wsgi.wsgi import WSGIHandler  # noqa
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
