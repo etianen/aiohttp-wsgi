@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
+import aiohttp_wsgi
 
 
 setup(
     name="aiohttp-wsgi",
-    version="0.4.0",
+    version=aiohttp_wsgi.__version__,
     license="BSD",
     description="WSGI adapter for aiohttp.",
     author="Dave Hall",

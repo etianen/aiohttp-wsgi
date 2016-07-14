@@ -74,12 +74,11 @@ API reference
 
 import asyncio
 import sys
-from io import BytesIO
-from tempfile import TemporaryFile
+from tempfile import SpooledTemporaryFile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
-from aiohttp_wsgi.utils import parse_sockname
+from aiohttp_wsgi.utils import parse_sockname, WriteBuffer
 
 
 class WSGIHandler:
@@ -89,13 +88,12 @@ class WSGIHandler:
 
     :param callable application: {application}
     :param str url_scheme: {url_scheme}
-    :param io.BytesIO stderr: A file-like value for WSGI error logging. Corresponds to ``environ['wsgi.errors']``.
-        Defaults to ``sys.stderr``.
+    :param io.BytesIO stderr: {stderr}
     :param int inbuf_overflow: {inbuf_overflow}
     :param int max_request_body_size: {max_request_body_size}
-    :param concurrent.futures.Executor executor: An Executor instance used to run WSGI requests. Defaults to the
-        :mod:`asyncio` base executor.
-    :param asyncio.BaseEventLoop loop: The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.
+    :param int outbuf_overflow: {outbuf_overflow}
+    :param concurrent.futures.Executor executor: {executor}
+    :param asyncio.BaseEventLoop loop: {loop}
     """
 
     def __init__(
@@ -107,52 +105,28 @@ class WSGIHandler:
         stderr=None,
         inbuf_overflow=524288,
         max_request_body_size=1073741824,
+        outbuf_overflow=1048576,
         # asyncio config.
         executor=None,
         loop=None
     ):
+        assert callable(application), "application should be callable"
         self._application = application
         # Handler config.
         self._url_scheme = url_scheme
         self._stderr = stderr or sys.stderr
+        assert isinstance(inbuf_overflow, int), "inbuf_overflow should be int"
+        assert inbuf_overflow >= 0, "inbuf_overflow should be >= 0"
         self._inbuf_overflow = inbuf_overflow
+        assert isinstance(max_request_body_size, int), "max_request_body_size should be int"
+        assert max_request_body_size >= 0, "max_request_body_size should be >= 0"
         self._max_request_body_size = max_request_body_size
+        assert isinstance(outbuf_overflow, int), "outbuf_overflow should be int"
+        assert outbuf_overflow >= 0, "outbuf_overflow should be >= 0"
+        self._outbuf_overflow = outbuf_overflow
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
-
-    async def _get_body(self, request):
-        # Check for body size overflow.
-        if request.content_length is not None and request.content_length > self._max_request_body_size:
-            raise HTTPRequestEntityTooLarge()
-        # Read the first chunk of the body.
-        block = await request.content.read(min(self._inbuf_overflow, self._max_request_body_size))
-        content_length = len(block)
-        # If the body hasn't overflowed, we can keep it in memory.
-        if request.content.at_eof():
-            body = BytesIO(block)
-        else:
-            # All filesystem operations need to be run in an executor.
-            body = await self._loop.run_in_executor(self._executor, TemporaryFile)
-            try:
-                while True:
-                    # Write the block.
-                    await self._loop.run_in_executor(self._executor, body.write, block)
-                    # Read a new block.
-                    block = await request.content.readany()
-                    if not block:
-                        break
-                    content_length += len(block)
-                    # Check for body size overflow. The request might be streaming, so we check with every chunk.
-                    if content_length > self._max_request_body_size:
-                        raise HTTPRequestEntityTooLarge()
-                body.seek(0)
-            except:
-                # Clean up the temporary file.
-                await self._loop.run_in_executor(self._executor, body.close)
-                raise
-        # All done!
-        return body, content_length
 
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
@@ -223,12 +197,35 @@ class WSGIHandler:
                 body_iterable.close()
 
     async def handle_request(self, request):
-        # Run the app.
-        body, content_length = await self._get_body(request)
+        # Check for body size overflow.
+        if request.content_length is not None and request.content_length > self._max_request_body_size:
+            raise HTTPRequestEntityTooLarge()
+        # Buffer the body.
+        content_length = 0
+        body = SpooledTemporaryFile(self._inbuf_overflow)
         try:
+            while True:
+                # Read a new block.
+                block = await request.content.readany()
+                if not block:
+                    break
+                content_length += len(block)
+                # Check for body size overflow. The request might be streaming, so we check with every chunk.
+                if content_length > self._max_request_body_size:
+                    raise HTTPRequestEntityTooLarge()
+                # Write the block.
+                if content_length > self._inbuf_overflow:
+                    await self._loop.run_in_executor(self._executor, body.write, block)
+                else:
+                    body.write(block)
+            body.seek(0)
+            # Get the environ.
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
-            await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+            try:
+                await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+            finally:
+                await response.finish()
             # ALll done!
             return response._response
         finally:
@@ -250,22 +247,33 @@ class WSGIResponse:
         # State.
         self._started = False
         self._response = None
+        self._buffer = WriteBuffer(self._handler._outbuf_overflow, self._handler._loop, self._handler._executor)
+        self._write_task = self._handler._loop.create_task(self._write_coro())
+
+    async def _write_coro(self):
+        while True:
+            data = await self._buffer.readany()
+            if not data:
+                break
+            if not self._response.prepared:
+                await self._response.prepare(self._request)
+            self._response.write(data)
+            await self._response.drain()
 
     def start_response(self, status, headers, exc_info=None):
-        if exc_info:
-            # Log the error.
-            self._request.app.logger.error("Unexpected error", exc_info=exc_info)
-            # Attempt to modify the response.
+        if exc_info is not None:
             try:
+                # Log the error.
+                self._request.app.logger.error("Unexpected error", exc_info=exc_info)
+                # Attempt to modify the response.
                 if self._started:
                     raise exc_info[1].with_traceback(exc_info[2])
                 self._response = None
             finally:
                 exc_info = None
         # Cannot start response twice.
-        assert not self._response, "Cannot call start_response() twice"
+        assert self._response is None, "cannot call start_response() twice"
         # Parse the status.
-        assert isinstance(status, str), "Response status should be str"
         status_code, reason = status.split(None, 1)
         status_code = int(status_code)
         # Store the response.
@@ -275,19 +283,21 @@ class WSGIResponse:
         )
         # Store the headers.
         for header_name, header_value in headers:
-            assert not is_hop_by_hop(header_name), "Hop-by-hop headers are forbidden"
+            assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden"
             self._response.headers.add(header_name, header_value)
         # Return the stream writer interface.
         return self.write
 
     def write(self, data):
-        assert isinstance(data, (bytes, bytearray, memoryview)), "Data should be bytes"
-        assert self._response, "Application did not call start_response()"
-        if not self._started:
-            self._started = True
-            asyncio.run_coroutine_threadsafe(self._response.prepare(self._request), loop=self._handler._loop).result()
-        if data:
-            self._handler._loop.call_soon_threadsafe(self._response.write, data)
+        assert isinstance(data, (bytes, bytearray, memoryview)), "data should be bytes"
+        assert self._response is not None, "application did not call start_response()"
+        self._started = True
+        self._buffer.write(data)
+
+    async def finish(self):
+        await self._buffer.write_eof()
+        await self._write_task
+        self._buffer.assert_flushed()
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
@@ -298,6 +308,10 @@ HELP = {
         "A hint about the URL scheme used to access the application. Corresponds to ``environ['wsgi.url_scheme']``. "
         "Default is auto-detected to ``'http'`` or ``'https'``."
     ),
+    "stderr": (
+        "A file-like value for WSGI error logging. Corresponds to ``environ['wsgi.errors']``. "
+        "Defaults to ``sys.stderr``."
+    ),
     "inbuf_overflow": (
         "A tempfile will be created if the request body is larger than this value, which is measured in bytes. "
         "Defaults to ``{inbuf_overflow!r}``."
@@ -306,6 +320,12 @@ HELP = {
         "Maximum number of bytes in request body. Defaults to ``{max_request_body_size!r}``. "
         "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
     ).format(**DEFAULTS),
+    "outbuf_overflow": (
+        "A tempfile will be created if the response body is larger than this value, which is measured in bytes. "
+        "Defaults to ``{outbuf_overflow!r}``."
+    ).format(**DEFAULTS),
+    "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
+    "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",
 }
 
 WSGIHandler.__doc__ = WSGIHandler.__doc__.format(**HELP)

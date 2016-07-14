@@ -1,10 +1,11 @@
 import asyncio
-import socket
 import unittest
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
 from tempfile import NamedTemporaryFile
+import aiohttp
 from aiohttp_wsgi.api import start_server
+from aiohttp_wsgi.utils import parse_sockname
 
 
 def noop_application(environ, start_response):
@@ -12,6 +13,34 @@ def noop_application(environ, start_response):
         ("Content-Type", "text/plain"),
     ])
     return []
+
+
+class TestServer:
+
+    def __init__(self, server, loop):
+        self.server = server
+        # Set up client settion.
+        self.host, self.port = parse_sockname(server.sockets[0].getsockname())
+        if self.host == "unix":
+            self.connector = aiohttp.UnixConnector(path=self.port, loop=loop)
+        else:
+            self.connector = aiohttp.TCPConnector(loop=loop)
+        self.session = aiohttp.ClientSession(connector=self.connector, loop=loop)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        # Clean up client session.
+        self.session.close()
+        self.connector.close()
+        # Clean server.
+        self.server.close()
+        await self.server.wait_closed(shutdown_timeout=3.0)
+
+    async def request(self, method, path, **kwargs):
+        uri = "http://{}:{}{}".format(self.host, self.port, path)
+        return await self.session.request(method, uri, **kwargs)
 
 
 class AsyncTestCase(unittest.TestCase):
@@ -30,19 +59,19 @@ class AsyncTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.loop = asyncio.new_event_loop()
-        self.executor = ThreadPoolExecutor(1)
+        self.executor = ThreadPoolExecutor(2)
 
     def tearDown(self):
         super().tearDown()
         self.loop.close()
 
     async def _start_server(self, application="tests.base:noop_application", **kwargs):
-        return await start_server(
+        return TestServer(await start_server(
             application,
             loop=self.loop,
             executor=self.executor,
             **kwargs,
-        )
+        ), self.loop)
 
     async def start_server(self, *args, **kwargs):
         return await self._start_server(
@@ -57,16 +86,6 @@ class AsyncTestCase(unittest.TestCase):
         return await self._start_server(
             *args,
             unix_socket=socket_file.name,
-            access_log=None,  # Access logging is broken in aiohtp for unix sockets.
-            **kwargs,
-        )
-
-    async def start_socket_server(self, *args, **kwargs):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(("127.0.0.1", 0))
-        return await self._start_server(
-            *args,
-            socket=sock,
             **kwargs,
         )
 

@@ -8,9 +8,11 @@ Latest
 
 -   Minimum :ref:`aiohttp <aiohttp-web>` version is now 0.21.2.
 -   Added :doc:`aiohttp-wsgi-serve <main>` command line interface.
+-   Responses over 1MB will be buffered in a temporary file. Can be configured using the ``outbuf_overflow`` argument to :class:`WSGIHandler`.
 -   **Breaking:** Removed support for Python 3.4.
 -   **Breaking:** Removed ``aiohttp.concurrent`` helpers, which are no longer required with Python 3.5+.
 -   **Breaking:** Removed ``configure_server()`` and ``close_server()`` helpers. Use :class:`WSGIHandler` directly.
+-   **Breaking:** Removed ``serve()`` helpers. Use the :doc:`command line interface <main>` directly.
 
 
 0.4.0

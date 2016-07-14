@@ -77,15 +77,6 @@ class EnvironTest(AsyncTestCase):
             await self.assertResponse(server, "GET", "/")
 
     @environ_application
-    def assertEnvironSocket(self, environ):
-        self.assertEqual(environ["SERVER_NAME"], "127.0.0.1")
-        self.assertGreater(int(environ["SERVER_PORT"]), 0)
-
-    async def testEnvironSocket(self):
-        async with await self.start_socket_server(self.assertEnvironSocket) as server:
-            await self.assertResponse(server, "GET", "/")
-
-    @environ_application
     def assertEnvironSubdir(self, environ):
         self.assertEqual(environ["SCRIPT_NAME"], "")
         self.assertEqual(environ["PATH_INFO"], "/foo")

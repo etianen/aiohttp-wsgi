@@ -1,4 +1,6 @@
-from importlib import import_module
+import asyncio
+import threading
+from tempfile import TemporaryFile
 
 
 def force_str(value):
@@ -11,11 +13,94 @@ def parse_sockname(sockname):
     return "unix", force_str(sockname)
 
 
-def import_func(func):
-    if isinstance(func, str):
-        assert ":" in func, "{!r} should have format 'module:callable'".format(func)
-        module_name, func_name = func.split(":", 1)
-        module = import_module(module_name)
-        func = getattr(module, func_name)
-    assert callable(func), "{!r} is not callable".format(func)
-    return func
+class WriteBuffer:
+
+    def __init__(self, watermark, loop, executor):
+        # Settings.
+        self._watermark = watermark
+        # Asyncio.
+        self._loop = loop
+        self._executor = executor
+        # State.
+        self._lock = threading.Lock()
+        self._alock = asyncio.Lock(loop=loop)
+        self._waiter = None
+        self._closed = False
+        # Memory buffer.
+        self._buffer = []
+        self._buffer_len = 0
+        # File buffer.
+        self._file = None
+        self._file_pos = 0
+        self._file_len = 0
+
+    def _readfile(self):
+        file_read_len = min(self._watermark, self._file_len)
+        self._file.seek(self._file_pos)
+        data = self._file.read(file_read_len)
+        self._file_len -= file_read_len
+        assert self._file_len >= 0
+        if self._file_len == 0:
+            if self._closed:
+                self._file.close()
+                self._file = None
+            else:
+                self._file.truncate()
+            self._file_pos = 0
+        else:
+            self._file.seek(0, 2)
+            self._file_pos += file_read_len
+        return data
+
+    async def readany(self):
+        with await self._alock, self._lock:
+            assert self._waiter is None
+            # Handle buffered data.
+            if self._buffer_len > 0:
+                data = b"".join(self._buffer)
+                del self._buffer[:]
+                self._buffer_len = 0
+                return data
+            # Handle file data.
+            if self._file_len > 0:
+                return await self._loop.run_in_executor(self._executor, self._readfile)
+            # Handle closed buffer.
+            if self._closed:
+                return b""
+            # Wait for more data.
+            waiter = self._waiter = asyncio.Future(loop=self._loop)
+        return await waiter
+
+    def write(self, data):
+        if data:
+            with self._lock:
+                if self._waiter is not None:
+                    # Hand over data immediately.
+                    self._loop.call_soon_threadsafe(self._waiter.set_result, data)
+                    self._waiter = None
+                elif self._buffer_len >= self._watermark or self._file_len > 0:
+                    # Write to temp file.
+                    if self._file is None:
+                        self._file = TemporaryFile()
+                    self._file.write(data)
+                    self._file_len += len(data)
+                else:
+                    # Buffer in memory.
+                    self._buffer.append(data)
+                    self._buffer_len += len(data)
+
+    async def write_eof(self):
+        with await self._alock, self._lock:
+            assert not self._closed
+            self._closed = True
+            if self._waiter is not None:
+                self._waiter.set_result(b"")
+                self._waiter = None
+
+    def assert_flushed(self):
+        assert self._waiter is None
+        assert len(self._buffer) == 0
+        assert self._buffer_len == 0
+        assert self._file is None
+        assert self._file_pos == 0
+        assert self._file_len == 0

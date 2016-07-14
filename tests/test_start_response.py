@@ -1,3 +1,4 @@
+import time
 from tests.base import AsyncTestCase
 
 
@@ -21,6 +22,8 @@ class StartResponseTest(AsyncTestCase):
                 self.assertEqual(response.headers["Foo"], "Bar")
                 self.assertEqual(await response.text(), "foobar")
 
+    # Streaming.
+
     def streamingResponseApplication(self, environ, start_response):
         start_response("200 OK", [])
         for _ in range(CHUNK_COUNT):
@@ -39,5 +42,25 @@ class StartResponseTest(AsyncTestCase):
 
     async def testStreamingResponseWrite(self):
         async with await self.start_server(self.streamingResponseWriteApplication) as server:
+            async with await server.request("GET", "/") as response:
+                self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)
+
+    # Outbuf overflow.
+
+    async def testOutbufOverflow(self):
+        async with await self.start_server(self.streamingResponseApplication, outbuf_overflow=len(CHUNK)//2) as server:
+            async with await server.request("GET", "/") as response:
+                self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)
+
+    def outbufOverflowSlowApplication(self, environ, start_response):
+        start_response("200 OK", [])
+        for _ in range(CHUNK_COUNT // 2):
+            yield CHUNK
+        time.sleep(1)
+        for _ in range(CHUNK_COUNT // 2):
+            yield CHUNK
+
+    async def testOutbufOverflowSlow(self):
+        async with await self.start_server(self.outbufOverflowSlowApplication, outbuf_overflow=len(CHUNK)//2) as server:
             async with await server.request("GET", "/") as response:
                 self.assertEqual(await response.read(), CHUNK * CHUNK_COUNT)
