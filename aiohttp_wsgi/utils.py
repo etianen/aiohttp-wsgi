@@ -35,40 +35,42 @@ class WriteBuffer:
         self._file_len = 0
 
     def _readfile(self):
-        file_read_len = min(self._watermark, self._file_len)
-        self._file.seek(self._file_pos)
-        data = self._file.read(file_read_len)
-        self._file_len -= file_read_len
-        assert self._file_len >= 0
-        if self._file_len == 0:
-            if self._closed:
-                self._file.close()
-                self._file = None
+        with self._lock:
+            file_read_len = min(self._watermark, self._file_len)
+            self._file.seek(self._file_pos)
+            data = self._file.read(file_read_len)
+            self._file_len -= file_read_len
+            assert self._file_len >= 0
+            if self._file_len == 0:
+                if self._closed:
+                    self._file.close()
+                    self._file = None
+                else:
+                    self._file.truncate()
+                self._file_pos = 0
             else:
-                self._file.truncate()
-            self._file_pos = 0
-        else:
-            self._file.seek(0, 2)
-            self._file_pos += file_read_len
-        return data
+                self._file.seek(0, 2)
+                self._file_pos += file_read_len
+            return data
 
     async def readany(self):
         with await self._alock, self._lock:
             assert self._waiter is None
-            # Handle buffered data.
             if self._buffer_len > 0:
+                # Handle buffered data.
                 data = b"".join(self._buffer)
                 del self._buffer[:]
                 self._buffer_len = 0
                 return data
-            # Handle file data.
-            if self._file_len > 0:
-                return await self._loop.run_in_executor(self._executor, self._readfile)
-            # Handle closed buffer.
-            if self._closed:
+            elif self._file_len > 0:
+                # Handle file data.
+                waiter = self._loop.run_in_executor(self._executor, self._readfile)
+            elif self._closed:
+                # Handle closed buffer.
                 return b""
-            # Wait for more data.
-            waiter = self._waiter = asyncio.Future(loop=self._loop)
+            else:
+                # Wait for more data.
+                waiter = self._waiter = asyncio.Future(loop=self._loop)
         return await waiter
 
     def write(self, data):

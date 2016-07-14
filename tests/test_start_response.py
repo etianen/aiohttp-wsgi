@@ -71,3 +71,12 @@ class StartResponseTest(AsyncTestCase):
         ) as client:
             response = client.request()
             self.assertEqual(response.text, RESPONSE_TEXT)
+
+    def testOutbufOverflowSlowThreadStarvation(self):
+        with self.serve(
+            "--threads", "1",
+            "--outbuf-overflow", str(len(CHUNK) // 2),
+            "tests.test_start_response:outbuf_overflow_slow_application",
+        ) as client:
+            response = client.request()
+            self.assertEqual(response.text, RESPONSE_TEXT)
