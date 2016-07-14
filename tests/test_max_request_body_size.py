@@ -1,19 +1,19 @@
 from tests.base import AsyncTestCase
 
 
-def infinite_body():
+def streaming_body():
     for _ in range(100):
         yield b"foobar"
 
 
 class MaxRequestBodySizeTest(AsyncTestCase):
 
-    async def testMaxRequestBodySize(self):
-        async with await self.start_server(max_request_body_size=3) as server:
-            async with await server.request("GET", "/", data="foobar") as response:
-                self.assertEqual(response.status, 413)
+    def testMaxRequestBodySize(self):
+        with self.serve("--max-request-body-size", "3", "tests.base:noop_application") as client:
+            response = client.request(data="foobar")
+            self.assertEqual(response.status, 413)
 
-    async def testMaxRequestBodySizeStreaming(self):
-        async with await self.start_server(max_request_body_size=20) as server:
-            async with await server.request("GET", "/", data=infinite_body()) as response:
-                self.assertEqual(response.status, 413)
+    def testMaxRequestBodySizeStreaming(self):
+        with self.serve("--max-request-body-size", "20", "tests.base:noop_application") as client:
+            response = client.request(data=streaming_body())
+            self.assertEqual(response.status, 413)

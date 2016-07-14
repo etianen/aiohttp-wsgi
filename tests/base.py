@@ -1,11 +1,43 @@
 import asyncio
+import threading
 import unittest
 from functools import wraps
-from concurrent.futures import ThreadPoolExecutor
+from collections import namedtuple
+from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 import aiohttp
-from aiohttp_wsgi.api import start_server
+from aiohttp_wsgi.__main__ import serve
 from aiohttp_wsgi.utils import parse_sockname
+
+
+Response = namedtuple("Response", ("status", "reason", "headers", "text"))
+
+
+class TestClient:
+
+    def __init__(self, test_case, loop, host, port, session):
+        self._test_case = test_case
+        self._loop = loop
+        self._host = host
+        self._port = port
+        self._session = session
+
+    def request(self, method="GET", path="/", **kwargs):
+        uri = "http://{}:{}{}".format(self._host, self._port, path)
+        response = self._loop.run_until_complete(self._session.request(method, uri, **kwargs))
+        try:
+            return Response(
+                response.status,
+                response.reason,
+                response.headers,
+                self._loop.run_until_complete(response.text()),
+            )
+        finally:
+            self._loop.run_until_complete(response.release())
+
+    def assert_response(self, *args, **kwargs):
+        response = self.request(*args, **kwargs)
+        self._test_case.assertEqual(response.status, 200)
 
 
 def noop_application(environ, start_response):
@@ -15,80 +47,36 @@ def noop_application(environ, start_response):
     return []
 
 
-class TestServer:
-
-    def __init__(self, server, loop):
-        self.server = server
-        # Set up client settion.
-        self.host, self.port = parse_sockname(server.sockets[0].getsockname())
-        if self.host == "unix":
-            self.connector = aiohttp.UnixConnector(path=self.port, loop=loop)
-        else:
-            self.connector = aiohttp.TCPConnector(loop=loop)
-        self.session = aiohttp.ClientSession(connector=self.connector, loop=loop)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *exc_info):
-        # Clean up client session.
-        self.session.close()
-        self.connector.close()
-        # Clean server.
-        self.server.close()
-        await self.server.wait_closed(shutdown_timeout=3.0)
-
-    async def request(self, method, path, **kwargs):
-        uri = "http://{}:{}{}".format(self.host, self.port, path)
-        return await self.session.request(method, uri, **kwargs)
-
-
 class AsyncTestCase(unittest.TestCase):
 
-    def __init__(self, methodName):
-        # Wrap method in coroutine.
-        func = getattr(self, methodName)
-        if asyncio.iscoroutinefunction(func):
-            @wraps(func)
-            def do_async_test(*args, **kwargs):
-                self.loop.run_until_complete(func(*args, **kwargs))
-            setattr(self, methodName, do_async_test)
-        # All done!
-        super().__init__(methodName)
+    @contextmanager
+    def _serve(self, *args):
+        with serve("-q", *args) as (loop, server):
+            host, port = parse_sockname(server.sockets[0].getsockname())
+            if host == "unix":
+                connector = aiohttp.UnixConnector(path=port, loop=loop)
+            else:
+                connector = aiohttp.TCPConnector(loop=loop)
+            try:
+                session = aiohttp.ClientSession(connector=connector, loop=loop)
+                with session:
+                    yield TestClient(self, loop, host, port, session)
+            finally:
+                connector.close()
 
-    def setUp(self):
-        super().setUp()
-        self.loop = asyncio.new_event_loop()
-        self.executor = ThreadPoolExecutor(2)
-
-    def tearDown(self):
-        super().tearDown()
-        self.loop.close()
-
-    async def _start_server(self, application="tests.base:noop_application", **kwargs):
-        return TestServer(await start_server(
-            application,
-            loop=self.loop,
-            executor=self.executor,
-            **kwargs,
-        ), self.loop)
-
-    async def start_server(self, *args, **kwargs):
-        return await self._start_server(
+    def serve(self, *args, **kwargs):
+        return self._serve(
+            "--host", "127.0.0.1",
+            "--port", "0",
             *args,
-            host="127.0.0.1",
             **kwargs,
         )
 
-    async def start_unix_server(self, *args, **kwargs):
+    def serve_unix(self, *args, **kwargs):
         socket_file = NamedTemporaryFile()
         socket_file.close()
-        return await self._start_server(
+        return self._serve(
+            "--unix-socket", socket_file.name,
             *args,
-            unix_socket=socket_file.name,
             **kwargs,
         )
-
-    async def assertResponse(self, server, *args, **kwargs):
-        async with await server.request(*args, **kwargs) as response:
-            self.assertEqual(response.status, 200)

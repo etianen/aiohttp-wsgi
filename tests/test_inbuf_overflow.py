@@ -8,10 +8,10 @@ def infinite_body():
 
 class InbufOverflowTest(AsyncTestCase):
 
-    async def testInbufOverflow(self):
-        async with await self.start_server(inbuf_overflow=3) as server:
-            await self.assertResponse(server, "GET", "/", data="foobar")
+    def testInbufOverflow(self):
+        with self.serve("--inbuf-overflow", "3", "tests.base:noop_application") as client:
+            client.assert_response(data="foobar")
 
-    async def testInbufOverflowStreaming(self):
-        async with await self.start_server(inbuf_overflow=20) as server:
-            await self.assertResponse(server, "GET", "/", data=infinite_body())
+    def testInbufOverflowStreaming(self):
+        with self.serve("--inbuf-overflow", "20", "tests.base:noop_application") as client:
+            client.assert_response(data=infinite_body())
