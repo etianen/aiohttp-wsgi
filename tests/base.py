@@ -1,7 +1,4 @@
-import asyncio
-import threading
 import unittest
-from functools import wraps
 from collections import namedtuple
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile

@@ -326,8 +326,9 @@ def serve(*argv):
         logger.info("Stopped serving on %s", server_uri)
 
 
-def main(*argv):  # pragma: no cover
-    with serve(*argv) as (loop, executor):
+def main():  # pragma: no cover
+    sys.path.insert(0, os.getcwd())
+    with serve(*sys.argv[1:]) as (loop, executor):
         try:
             loop.run_forever()
         except KeyboardInterrupt:
@@ -335,7 +336,3 @@ def main(*argv):  # pragma: no cover
 
 
 __doc__ = __doc__.format(**HELP, help=textwrap.indent(parser.format_help(), "    "))
-
-
-if __name__ == "__main__":  # pragma: no cover
-    main(*sys.argv[1:])

@@ -63,4 +63,4 @@ class ErrorsTest(AsyncTestCase):
         with self.assertLogs("aiohttp.web", "ERROR"):
             with self.serve("tests.test_errors:error_after_write_application") as client:
                 with self.assertRaises(TransferEncodingError):
-                    response = client.request()
+                    client.request()
