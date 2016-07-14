@@ -98,6 +98,7 @@ add_argument(
     "--static",
     action="append",
     default=[],
+    type=str,
     help=(
         "Static route mappings in the form 'path=directory'. "
         "`path` must start with a slash, but not end with a slash."
