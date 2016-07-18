@@ -3,6 +3,13 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+
+0.5.2
+-----
+
+- Identical to 0.5.1, after PyPi release proved mysteriously broken.
+
+
 0.5.1
 -----
 
