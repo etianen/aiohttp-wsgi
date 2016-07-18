@@ -1,17 +1,14 @@
-from tests.base import AsyncTestCase
-
-
-def infinite_body():
-    for _ in range(100):
-        yield b"foobar"
+from tests.base import AsyncTestCase, streaming_request_body
 
 
 class InbufOverflowTest(AsyncTestCase):
 
     def testInbufOverflow(self):
-        with self.serve("--inbuf-overflow", "3", "tests.base:noop_application") as client:
-            client.assert_response(data="foobar")
+        with self.serve("--inbuf-overflow", "3", "tests.base:echo_application") as client:
+            response = client.request(data="foobar")
+            self.assertEqual(response.content, b"foobar")
 
     def testInbufOverflowStreaming(self):
-        with self.serve("--inbuf-overflow", "20", "tests.base:noop_application") as client:
-            client.assert_response(data=infinite_body())
+        with self.serve("--inbuf-overflow", "20", "tests.base:echo_application") as client:
+            response = client.request(data=streaming_request_body())
+            self.assertEqual(response.content, b"foobar" * 100)

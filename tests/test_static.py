@@ -11,13 +11,13 @@ class StaticTest(AsyncTestCase):
         with self.serve("--static", STATIC_ITEM, "tests.base:noop_application") as client:
             response = client.request()
             self.assertEqual(response.status, 200)
-            self.assertEqual(response.text, "")
+            self.assertEqual(response.content, b"")
 
     def testStaticHit(self):
         with self.serve("--static", STATIC_ITEM, "tests.base:noop_application") as client:
             response = client.request(path="/static/text.txt")
             self.assertEqual(response.status, 200)
-            self.assertEqual(response.text, "Test file")
+            self.assertEqual(response.content, b"Test file")
 
     def testStaticHitMissing(self):
         with self.serve("--static", STATIC_ITEM, "tests.base:noop_application") as client:

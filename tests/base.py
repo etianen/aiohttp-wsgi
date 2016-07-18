@@ -7,7 +7,7 @@ from aiohttp_wsgi.__main__ import serve
 from aiohttp_wsgi.utils import parse_sockname
 
 
-Response = namedtuple("Response", ("status", "reason", "headers", "text"))
+Response = namedtuple("Response", ("status", "reason", "headers", "content"))
 
 
 class TestClient:
@@ -27,13 +27,13 @@ class TestClient:
                 response.status,
                 response.reason,
                 response.headers,
-                self._loop.run_until_complete(response.text()),
+                self._loop.run_until_complete(response.read()),
             )
         finally:
             self._loop.run_until_complete(response.release())
 
-    def assert_response(self, *args, **kwargs):
-        response = self.request(*args, **kwargs)
+    def assert_response(self, *args, data=b"", **kwargs):
+        response = self.request(*args, data=data, **kwargs)
         self._test_case.assertEqual(response.status, 200)
 
 
@@ -42,6 +42,18 @@ def noop_application(environ, start_response):
         ("Content-Type", "text/plain"),
     ])
     return []
+
+
+def echo_application(environ, start_response):
+    start_response("200 OK", [
+        ("Content-Type", "text/plain"),
+    ])
+    return [environ["wsgi.input"].read()]
+
+
+def streaming_request_body():
+    for _ in range(100):
+        yield b"foobar"
 
 
 class AsyncTestCase(unittest.TestCase):

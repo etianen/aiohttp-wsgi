@@ -45,7 +45,7 @@ class ErrorsTest(AsyncTestCase):
             with self.assertLogs("aiohttp.web", "ERROR"):
                 response = client.request()
                 self.assertEqual(response.status, 509)
-                self.assertEqual(response.text, "Boom!")
+                self.assertEqual(response.content, b"Boom!")
 
     def testNoStartResponse(self):
         with self.serve("tests.test_errors:no_start_response_application") as client:

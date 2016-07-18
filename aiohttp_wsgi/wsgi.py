@@ -73,8 +73,9 @@ API reference
 """
 
 import asyncio
+import io
 import sys
-from tempfile import SpooledTemporaryFile
+import tempfile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
@@ -202,7 +203,8 @@ class WSGIHandler:
             raise HTTPRequestEntityTooLarge()
         # Buffer the body.
         content_length = 0
-        body = SpooledTemporaryFile(self._inbuf_overflow)
+        body_overflow = False
+        body = io.BytesIO()
         try:
             while True:
                 # Read a new block.
@@ -213,12 +215,23 @@ class WSGIHandler:
                 # Check for body size overflow. The request might be streaming, so we check with every chunk.
                 if content_length > self._max_request_body_size:
                     raise HTTPRequestEntityTooLarge()
+                # Overflow onto disk, if required.
+                if not body_overflow and content_length > self._inbuf_overflow:
+                    body_overflow = True
+                    overflow_body = await self._loop.run_in_executor(self._executor, tempfile.TemporaryFile)
+                    await self._loop.run_in_executor(self._executor, overflow_body.write, body.getbuffer())
+                    body.close()
+                    body = overflow_body
                 # Write the block.
-                if content_length > self._inbuf_overflow:
+                if body_overflow:
                     await self._loop.run_in_executor(self._executor, body.write, block)
                 else:
                     body.write(block)
-            body.seek(0)
+            # Seek the body.
+            if body_overflow:
+                await self._loop.run_in_executor(self._executor, body.seek, 0)
+            else:
+                body.seek(0)
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
@@ -230,7 +243,7 @@ class WSGIHandler:
             return response._response
         finally:
             # Clean up the body.
-            if content_length > self._inbuf_overflow:
+            if body_overflow:
                 await self._loop.run_in_executor(self._executor, body.close)
             else:
                 body.close()
