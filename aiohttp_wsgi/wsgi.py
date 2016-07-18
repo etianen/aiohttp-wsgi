@@ -82,6 +82,53 @@ from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname, WriteBuffer
 
 
+class ReadBuffer:
+
+    __slots__ = (
+        "_inbuf_overflow", "_max_request_body_size", "_body", "_loop", "_executor", "_content_length", "_overflow",
+    )
+
+    def __init__(self, inbuf_overflow, max_request_body_size, loop, executor):
+        self._inbuf_overflow = inbuf_overflow
+        self._max_request_body_size = max_request_body_size
+        self._body = io.BytesIO()
+        self._loop = loop
+        self._executor = executor
+        self._content_length = 0
+        self._overflow = False
+
+    async def _run(self, fn, *args):
+        if self._overflow:
+            return await self._loop.run_in_executor(self._executor, fn, *args)
+        else:
+            return fn(*args)
+
+    async def write(self, data):
+        self._content_length += len(data)
+        # Check for body size overflow. The request might be streaming, so we check with every chunk.
+        if self._content_length > self._max_request_body_size:
+            raise HTTPRequestEntityTooLarge()
+        # Overflow onto disk, if required.
+        if not self._overflow and self._content_length > self._inbuf_overflow:
+            self._overflow = True
+            overflow_body = await self._run(tempfile.TemporaryFile)
+            await self._run(overflow_body.write, self._body.getbuffer())
+            self._body.close()
+            self._body = overflow_body
+        # Write the block.
+        await self._run(self._body.write, data)
+
+    async def get_body(self):
+        await self._run(self._body.seek, 0)
+        return self._body, self._content_length
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        await self._run(self._body.close)
+
+
 class WSGIHandler:
 
     """
@@ -202,36 +249,14 @@ class WSGIHandler:
         if request.content_length is not None and request.content_length > self._max_request_body_size:
             raise HTTPRequestEntityTooLarge()
         # Buffer the body.
-        content_length = 0
-        body_overflow = False
-        body = io.BytesIO()
-        try:
+        async with ReadBuffer(self._inbuf_overflow, self._max_request_body_size, self._loop, self._executor) as body:
             while True:
-                # Read a new block.
                 block = await request.content.readany()
                 if not block:
                     break
-                content_length += len(block)
-                # Check for body size overflow. The request might be streaming, so we check with every chunk.
-                if content_length > self._max_request_body_size:
-                    raise HTTPRequestEntityTooLarge()
-                # Overflow onto disk, if required.
-                if not body_overflow and content_length > self._inbuf_overflow:
-                    body_overflow = True
-                    overflow_body = await self._loop.run_in_executor(self._executor, tempfile.TemporaryFile)
-                    await self._loop.run_in_executor(self._executor, overflow_body.write, body.getbuffer())
-                    body.close()
-                    body = overflow_body
-                # Write the block.
-                if body_overflow:
-                    await self._loop.run_in_executor(self._executor, body.write, block)
-                else:
-                    body.write(block)
+                await body.write(block)
             # Seek the body.
-            if body_overflow:
-                await self._loop.run_in_executor(self._executor, body.seek, 0)
-            else:
-                body.seek(0)
+            body, content_length = await body.get_body()
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
@@ -241,12 +266,6 @@ class WSGIHandler:
                 await response.finish()
             # ALll done!
             return response._response
-        finally:
-            # Clean up the body.
-            if body_overflow:
-                await self._loop.run_in_executor(self._executor, body.close)
-            else:
-                body.close()
 
     async def __call__(self, request):
         return await self.handle_request(request)
