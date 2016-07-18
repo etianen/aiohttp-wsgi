@@ -273,6 +273,8 @@ class WSGIHandler:
 
 class WSGIResponse:
 
+    __slots__ = ("_handler", "_request", "_started", "_written", "_status", "_reason", "_headers", "response")
+
     def __init__(self, handler, request):
         self._handler = handler
         self._request = request
