@@ -74,6 +74,7 @@ API reference
 
 import sys
 from asyncio import get_event_loop, run_coroutine_threadsafe
+from collections import deque
 from io import BytesIO
 from tempfile import TemporaryFile
 from urllib.parse import quote
@@ -233,9 +234,13 @@ class WSGIHandler:
     def _run_application(self, environ, response):
         body_iterable = self._application(environ, response.start_response)
         try:
+            # Handle simple iterables.
+            if isinstance(body_iterable, (list, tuple, deque)):
+                return b"".join(body_iterable)
             # Run through all the data.
             for data in body_iterable:
                 response.write(data)
+            return b""
         finally:
             # Close the body.
             if hasattr(body_iterable, "close"):
@@ -257,8 +262,8 @@ class WSGIHandler:
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
-            await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
-            await response.write_async(b"", True)
+            response_body = await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+            await response.write_async(response_body, True)
             # ALll done!
             return response.response
 
