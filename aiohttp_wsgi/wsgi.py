@@ -78,7 +78,7 @@ from io import BytesIO
 from tempfile import TemporaryFile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
+from aiohttp.web import Response, StreamResponse, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -236,9 +236,6 @@ class WSGIHandler:
             # Run through all the data.
             for data in body_iterable:
                 response.write(data)
-            else:
-                # Ensure that empty responses are still started.
-                response.write(b"")
         finally:
             # Close the body.
             if hasattr(body_iterable, "close"):
@@ -261,8 +258,9 @@ class WSGIHandler:
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
             await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
+            await response.write_async(b"", True)
             # ALll done!
-            return response._response
+            return response.response
 
     async def __call__(self, request):
         return await self.handle_request(request)
@@ -275,9 +273,11 @@ class WSGIResponse:
         self._request = request
         # State.
         self._started = False
+        self._written = False
         self._status = None
+        self._reason = None
         self._headers = None
-        self._response = None
+        self.response = None
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info is not None:
@@ -285,42 +285,45 @@ class WSGIResponse:
                 # Log the error.
                 self._request.app.logger.error("Unexpected error", exc_info=exc_info)
                 # Attempt to modify the response.
-                if self._started:
+                if self._written:
                     raise exc_info[1].with_traceback(exc_info[2])
-                self._response = None
+                self._started = False
             finally:
                 exc_info = None
         # Cannot start response twice.
-        assert self._response is None, "cannot call start_response() twice"
+        assert not self._started, "cannot call start_response() twice"
+        self._started = True
         # Parse the status.
         status_code, reason = status.split(None, 1)
         status_code = int(status_code)
-        # Store the response.
-        self._response = StreamResponse(
-            status=status_code,
-            reason=reason,
-        )
-        # Store the headers.
+        # Parse the headers.
         for header_name, header_value in headers:
             assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden"
-            self._response.headers.add(header_name, header_value)
-        # Return the stream writer interface.
+        # Store the response info.
+        self._status = status_code
+        self._reason = reason
+        self._headers = dict(headers)
+        # All done!
         return self.write
 
-    async def write_async(self, data):
-        assert self._response is not None, "application did not call start_response()"
+    async def write_async(self, data, eof):
+        assert self._started, "application did not call start_response()"
         # Start the response.
-        self._started = True
-        if not self._response.prepared:
-            self._request.transport.set_write_buffer_limits(self._handler._outbuf_overflow)
-            await self._response.prepare(self._request)
+        if not self._written:
+            self._written = True
+            if eof:
+                self.response = Response(status=self._status, reason=self._reason, headers=self._headers, body=data)
+            else:
+                self.response = StreamResponse(status=self._status, reason=self._reason, headers=self._headers)
+                await self.response.prepare(self._request)
+                self._request.transport.set_write_buffer_limits(self._handler._outbuf_overflow)
+                self.response.write(data)
         else:
-            await self._response.drain()
-        # Write the data.
-        self._response.write(data)
+            await self.response.drain()
+            self.response.write(data)
 
     def write(self, data):
-        run_coroutine_threadsafe(self.write_async(data), loop=self._handler._loop).result()
+        run_coroutine_threadsafe(self.write_async(data, False), loop=self._handler._loop).result()
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
