@@ -3,6 +3,12 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+0.5.1
+-----
+
+- ``outbuf_overflow`` no longer creates a temporary buffer file, instead pausing the worker thread until the pending response has been flushed.
+
+
 0.5.0
 -----
 
