@@ -79,7 +79,7 @@ import tempfile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
-from aiohttp_wsgi.utils import parse_sockname, WriteBuffer
+from aiohttp_wsgi.utils import parse_sockname
 
 
 class ReadBuffer:
@@ -260,10 +260,7 @@ class WSGIHandler:
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
             response = WSGIResponse(self, request)
-            try:
-                await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
-            finally:
-                await response.finish()
+            await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
             # ALll done!
             return response._response
 
@@ -279,18 +276,6 @@ class WSGIResponse:
         # State.
         self._started = False
         self._response = None
-        self._buffer = WriteBuffer(self._handler._outbuf_overflow, self._handler._loop, self._handler._executor)
-        self._write_task = self._handler._loop.create_task(self._write_coro())
-
-    async def _write_coro(self):
-        while True:
-            data = await self._buffer.readany()
-            if not data:
-                break
-            if not self._response.prepared:
-                await self._response.prepare(self._request)
-            self._response.write(data)
-            await self._response.drain()
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info is not None:
@@ -320,16 +305,20 @@ class WSGIResponse:
         # Return the stream writer interface.
         return self.write
 
-    def write(self, data):
-        assert isinstance(data, (bytes, bytearray, memoryview)), "data should be bytes"
+    async def write_async(self, data):
         assert self._response is not None, "application did not call start_response()"
+        # Start the response.
         self._started = True
-        self._buffer.write(data)
+        if not self._response.prepared:
+            self._request.transport.set_write_buffer_limits(self._handler._outbuf_overflow)
+            await self._response.prepare(self._request)
+        else:
+            await self._response.drain()
+        # Write the data.
+        self._response.write(data)
 
-    async def finish(self):
-        await self._buffer.write_eof()
-        await self._write_task
-        self._buffer.assert_flushed()
+    def write(self, data):
+        asyncio.run_coroutine_threadsafe(self.write_async(data), loop=self._handler._loop).result()
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
@@ -353,8 +342,8 @@ HELP = {
         "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
     ).format(**DEFAULTS),
     "outbuf_overflow": (
-        "A tempfile will be created if the response body is larger than this value, which is measured in bytes. "
-        "Defaults to ``{outbuf_overflow!r}``."
+        "The worker thread will pause writing if the pending response body is larger than this value, "
+        "which is measured in bytes. Defaults to ``{outbuf_overflow!r}``."
     ).format(**DEFAULTS),
     "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
     "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",

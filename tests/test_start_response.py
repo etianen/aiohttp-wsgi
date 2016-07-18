@@ -1,4 +1,3 @@
-import time
 from tests.base import AsyncTestCase
 
 
@@ -27,15 +26,6 @@ def streaming_response_write_application(environ, start_response):
     return []
 
 
-def outbuf_overflow_slow_application(environ, start_response):
-    start_response("200 OK", [])
-    for _ in range(CHUNK_COUNT // 2):
-        yield CHUNK
-    time.sleep(1)
-    for _ in range(CHUNK_COUNT // 2):
-        yield CHUNK
-
-
 class StartResponseTest(AsyncTestCase):
 
     def testStartResponse(self):
@@ -60,23 +50,6 @@ class StartResponseTest(AsyncTestCase):
         with self.serve(
             "--outbuf-overflow", str(len(CHUNK) // 2),
             "tests.test_start_response:streaming_response_application",
-        ) as client:
-            response = client.request()
-            self.assertEqual(response.content, RESPONSE_CONTENT)
-
-    def testOutbufOverflowSlow(self):
-        with self.serve(
-            "--outbuf-overflow", str(len(CHUNK) // 2),
-            "tests.test_start_response:outbuf_overflow_slow_application",
-        ) as client:
-            response = client.request()
-            self.assertEqual(response.content, RESPONSE_CONTENT)
-
-    def testOutbufOverflowSlowThreadStarvation(self):
-        with self.serve(
-            "--threads", "1",
-            "--outbuf-overflow", str(len(CHUNK) // 2),
-            "tests.test_start_response:outbuf_overflow_slow_application",
         ) as client:
             response = client.request()
             self.assertEqual(response.content, RESPONSE_CONTENT)
