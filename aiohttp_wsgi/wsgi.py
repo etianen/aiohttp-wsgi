@@ -72,10 +72,10 @@ API reference
 .. include:: /_include/links.rst
 """
 
-import asyncio
-import io
 import sys
-import tempfile
+from asyncio import get_event_loop, run_coroutine_threadsafe
+from io import BytesIO
+from tempfile import TemporaryFile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import StreamResponse, HTTPRequestEntityTooLarge
@@ -91,7 +91,7 @@ class ReadBuffer:
     def __init__(self, inbuf_overflow, max_request_body_size, loop, executor):
         self._inbuf_overflow = inbuf_overflow
         self._max_request_body_size = max_request_body_size
-        self._body = io.BytesIO()
+        self._body = BytesIO()
         self._loop = loop
         self._executor = executor
         self._content_length = 0
@@ -111,7 +111,7 @@ class ReadBuffer:
         # Overflow onto disk, if required.
         if not self._overflow and self._content_length > self._inbuf_overflow:
             self._overflow = True
-            overflow_body = await self._run(tempfile.TemporaryFile)
+            overflow_body = await self._run(TemporaryFile)
             await self._run(overflow_body.write, self._body.getbuffer())
             self._body.close()
             self._body = overflow_body
@@ -174,7 +174,7 @@ class WSGIHandler:
         self._outbuf_overflow = outbuf_overflow
         # asyncio config.
         self._executor = executor
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop or get_event_loop()
 
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
@@ -275,6 +275,8 @@ class WSGIResponse:
         self._request = request
         # State.
         self._started = False
+        self._status = None
+        self._headers = None
         self._response = None
 
     def start_response(self, status, headers, exc_info=None):
@@ -318,7 +320,7 @@ class WSGIResponse:
         self._response.write(data)
 
     def write(self, data):
-        asyncio.run_coroutine_threadsafe(self.write_async(data), loop=self._handler._loop).result()
+        run_coroutine_threadsafe(self.write_async(data), loop=self._handler._loop).result()
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
