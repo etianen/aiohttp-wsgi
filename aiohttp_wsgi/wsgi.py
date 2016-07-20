@@ -73,13 +73,12 @@ API reference
 """
 
 import sys
-from asyncio import get_event_loop, run_coroutine_threadsafe
-from collections import deque
+from asyncio import get_event_loop
 from io import BytesIO
 from tempfile import TemporaryFile
 from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import Response, StreamResponse, HTTPRequestEntityTooLarge
+from aiohttp.web import Response, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -130,6 +129,38 @@ class ReadBuffer:
         await self._run(self._body.close)
 
 
+def _run_application(application, environ):
+    # Simple start_response callable.
+    def start_response(status, headers, exc_info=None):
+        nonlocal response_status, response_reason, response_headers, response_body
+        status_code, reason = status.split(None, 1)
+        status_code = int(status_code)
+        # Check the headers.
+        for header_name, header_value in headers:
+            assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden"
+        # Start the response.
+        response_status = status_code
+        response_reason = reason
+        response_headers = headers
+        del response_body[:]
+        return response_body.append
+    # Response data.
+    response_status = None
+    response_reason = None
+    response_headers = None
+    response_body = []
+    # Run the application.
+    body_iterable = application(environ, start_response)
+    try:
+        response_body.extend(body_iterable)
+        assert response_status is not None, "application did not call start_response()"
+        return response_status, response_reason, response_headers, b"".join(response_body)
+    finally:
+        # Close the body.
+        if hasattr(body_iterable, "close"):
+            body_iterable.close()
+
+
 class WSGIHandler:
 
     """
@@ -140,7 +171,6 @@ class WSGIHandler:
     :param io.BytesIO stderr: {stderr}
     :param int inbuf_overflow: {inbuf_overflow}
     :param int max_request_body_size: {max_request_body_size}
-    :param int outbuf_overflow: {outbuf_overflow}
     :param concurrent.futures.Executor executor: {executor}
     :param asyncio.BaseEventLoop loop: {loop}
     """
@@ -154,7 +184,6 @@ class WSGIHandler:
         stderr=None,
         inbuf_overflow=524288,
         max_request_body_size=1073741824,
-        outbuf_overflow=1048576,
         # asyncio config.
         executor=None,
         loop=None
@@ -170,9 +199,6 @@ class WSGIHandler:
         assert isinstance(max_request_body_size, int), "max_request_body_size should be int"
         assert max_request_body_size >= 0, "max_request_body_size should be >= 0"
         self._max_request_body_size = max_request_body_size
-        assert isinstance(outbuf_overflow, int), "outbuf_overflow should be int"
-        assert outbuf_overflow >= 0, "outbuf_overflow should be >= 0"
-        self._outbuf_overflow = outbuf_overflow
         # asyncio config.
         self._executor = executor
         self._loop = loop or get_event_loop()
@@ -231,21 +257,6 @@ class WSGIHandler:
         # All done!
         return environ
 
-    def _run_application(self, environ, response):
-        body_iterable = self._application(environ, response.start_response)
-        try:
-            # Handle simple iterables.
-            if isinstance(body_iterable, (list, tuple, deque)):
-                return b"".join(body_iterable)
-            # Run through all the data.
-            for data in body_iterable:
-                response.write(data)
-            return b""
-        finally:
-            # Close the body.
-            if hasattr(body_iterable, "close"):
-                body_iterable.close()
-
     async def handle_request(self, request):
         # Check for body size overflow.
         if request.content_length is not None and request.content_length > self._max_request_body_size:
@@ -261,76 +272,22 @@ class WSGIHandler:
             body, content_length = await body.get_body()
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
-            response = WSGIResponse(self, request)
-            response_body = await self._loop.run_in_executor(self._executor, self._run_application, environ, response)
-            await response.write_async(response_body, True)
-            # ALll done!
-            return response.response
+            status, reason, headers, body = await self._loop.run_in_executor(
+                self._executor,
+                _run_application,
+                self._application,
+                environ,
+            )
+            # All done!
+            return Response(
+                status=status,
+                reason=reason,
+                headers=headers,
+                body=body,
+            )
 
     async def __call__(self, request):
         return await self.handle_request(request)
-
-
-class WSGIResponse:
-
-    __slots__ = ("_handler", "_request", "_started", "_written", "_status", "_reason", "_headers", "response")
-
-    def __init__(self, handler, request):
-        self._handler = handler
-        self._request = request
-        # State.
-        self._started = False
-        self._written = False
-        self._status = None
-        self._reason = None
-        self._headers = None
-        self.response = None
-
-    def start_response(self, status, headers, exc_info=None):
-        if exc_info is not None:
-            try:
-                # Log the error.
-                self._request.app.logger.error("Unexpected error", exc_info=exc_info)
-                # Attempt to modify the response.
-                if self._written:
-                    raise exc_info[1].with_traceback(exc_info[2])
-                self._started = False
-            finally:
-                exc_info = None
-        # Cannot start response twice.
-        assert not self._started, "cannot call start_response() twice"
-        self._started = True
-        # Parse the status.
-        status_code, reason = status.split(None, 1)
-        status_code = int(status_code)
-        # Parse the headers.
-        for header_name, header_value in headers:
-            assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden"
-        # Store the response info.
-        self._status = status_code
-        self._reason = reason
-        self._headers = headers
-        # All done!
-        return self.write
-
-    async def write_async(self, data, eof):
-        assert self._started, "application did not call start_response()"
-        # Start the response.
-        if not self._written:
-            self._written = True
-            if eof:
-                self.response = Response(status=self._status, reason=self._reason, headers=self._headers, body=data)
-            else:
-                self.response = StreamResponse(status=self._status, reason=self._reason, headers=self._headers)
-                await self.response.prepare(self._request)
-                self._request.transport.set_write_buffer_limits(self._handler._outbuf_overflow)
-                self.response.write(data)
-        else:
-            await self.response.drain()
-            self.response.write(data)
-
-    def write(self, data):
-        run_coroutine_threadsafe(self.write_async(data, False), loop=self._handler._loop).result()
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
@@ -352,10 +309,6 @@ HELP = {
     "max_request_body_size": (
         "Maximum number of bytes in request body. Defaults to ``{max_request_body_size!r}``. "
         "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
-    ).format(**DEFAULTS),
-    "outbuf_overflow": (
-        "The worker thread will pause writing if the pending response body is larger than this value, "
-        "which is measured in bytes. Defaults to ``{outbuf_overflow!r}``."
     ).format(**DEFAULTS),
     "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
     "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",

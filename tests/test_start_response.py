@@ -46,11 +46,3 @@ class StartResponseTest(AsyncTestCase):
         with self.serve("tests.test_start_response:streaming_response_write_application") as client:
             response = client.request()
             self.assertEqual(response.content, RESPONSE_CONTENT)
-
-    def testOutbufOverflow(self):
-        with self.serve(
-            "--outbuf-overflow", str(len(CHUNK) // 2),
-            "tests.test_start_response:streaming_response_application",
-        ) as client:
-            response = client.request()
-            self.assertEqual(response.content, RESPONSE_CONTENT)

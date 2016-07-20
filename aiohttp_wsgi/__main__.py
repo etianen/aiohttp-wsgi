@@ -278,9 +278,6 @@ add_argument(
     "--max-request-body-size",
 )
 add_argument(
-    "--outbuf-overflow",
-)
-add_argument(
     "--shutdown-timeout",
 )
 add_argument(
