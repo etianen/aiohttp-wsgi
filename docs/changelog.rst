@@ -4,8 +4,8 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
-Latest
-------
+0.6.0
+-----
 
 -   Fixing missing multiple headers sent from start_response.
 -   **Breaking:** Removed outbuf_overflow setting. Responses are always buffered in memory.
