@@ -9,6 +9,7 @@ RESPONSE_CONTENT = CHUNK * CHUNK_COUNT
 def start_response_application(environ, start_response):
     start_response("201 Created", [
         ("Foo", "Bar"),
+        ("Foo", "Baz"),
     ])
     return [b"foobar"]
 
@@ -33,7 +34,7 @@ class StartResponseTest(AsyncTestCase):
             response = client.request()
             self.assertEqual(response.status, 201)
             self.assertEqual(response.reason, "Created")
-            self.assertEqual(response.headers["Foo"], "Bar")
+            self.assertEqual(response.headers.getall("Foo"), ["Bar", "Baz"])
             self.assertEqual(response.content, b"foobar")
 
     def testStreamingResponse(self):

@@ -309,7 +309,7 @@ class WSGIResponse:
         # Store the response info.
         self._status = status_code
         self._reason = reason
-        self._headers = dict(headers)
+        self._headers = headers
         # All done!
         return self.write
 

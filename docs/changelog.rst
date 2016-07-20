@@ -4,16 +4,22 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.5.3
+-----
+
+-   Fixing missing multiple headers sent from start_response.
+
+
 0.5.2
 -----
 
-- Identical to 0.5.1, after PyPi release proved mysteriously broken.
+-   Identical to 0.5.1, after PyPi release proved mysteriously broken.
 
 
 0.5.1
 -----
 
-- ``outbuf_overflow`` no longer creates a temporary buffer file, instead pausing the worker thread until the pending response has been flushed.
+-   ``outbuf_overflow`` no longer creates a temporary buffer file, instead pausing the worker thread until the pending response has been flushed.
 
 
 0.5.0
