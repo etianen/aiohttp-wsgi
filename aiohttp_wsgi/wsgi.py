@@ -76,7 +76,6 @@ import sys
 from asyncio import get_event_loop
 from io import BytesIO
 from tempfile import TemporaryFile
-from urllib.parse import quote
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import Response, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname
@@ -226,8 +225,8 @@ class WSGIHandler:
         # Create the environ.
         environ = {
             "REQUEST_METHOD": request.method,
-            "SCRIPT_NAME": quote(script_name),  # WSGI spec expects URL-quoted path components.
-            "PATH_INFO": quote(path_info),  # WSGI spec expects URL-quoted path components.
+            "SCRIPT_NAME": script_name,
+            "PATH_INFO": path_info,
             "QUERY_STRING": request.query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(content_length),

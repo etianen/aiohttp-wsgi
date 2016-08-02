@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.6.2
+-----
+
+-   Fixing incorrect quoting of ``PATH_INFO`` and ``SCRIPT_NAME`` in environ.
+
+
 0.6.1
 -----
 

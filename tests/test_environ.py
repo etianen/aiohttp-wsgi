@@ -66,12 +66,6 @@ def assert_environ_subdir(environ):
 
 
 @environ_application
-def assert_environ_subdir_quoted(environ):
-    assert environ["SCRIPT_NAME"] == ""
-    assert environ["PATH_INFO"] == "/foo%20"
-
-
-@environ_application
 def assert_environ_root_subdir(environ):
     assert environ["SCRIPT_NAME"] == "/foo"
     assert environ["PATH_INFO"] == ""
@@ -116,10 +110,6 @@ class EnvironTest(AsyncTestCase):
     def testEnvironSubdir(self):
         with self.serve("tests.test_environ:assert_environ_subdir") as client:
             client.assert_response(path="/foo")
-
-    def testEnvironSubdirQuoted(self):
-        with self.serve("tests.test_environ:assert_environ_subdir_quoted") as client:
-            client.assert_response(path="/foo%20")
 
     def testEnvironRootSubdir(self):
         with self.serve("--script-name", "/foo", "tests.test_environ:assert_environ_root_subdir") as client:
