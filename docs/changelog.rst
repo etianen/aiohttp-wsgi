@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.6.3
+-----
+
+-   Updating aiohttp dependency to >= 1.0.
+
+
 0.6.2
 -----
 
