@@ -56,6 +56,10 @@ def streaming_request_body():
         yield b"foobar"
 
 
+async def create_client_session(connector, loop):
+    return aiohttp.ClientSession(connector=connector, loop=loop)
+
+
 class AsyncTestCase(unittest.TestCase):
 
     @contextmanager
@@ -66,11 +70,11 @@ class AsyncTestCase(unittest.TestCase):
                 connector = aiohttp.UnixConnector(path=port, loop=loop)
             else:
                 connector = aiohttp.TCPConnector(loop=loop)
+            session = loop.run_until_complete(create_client_session(connector=connector, loop=loop))
             try:
-                session = aiohttp.ClientSession(connector=connector, loop=loop)
-                with session:
-                    yield TestClient(self, loop, host, port, session)
+                yield TestClient(self, loop, host, port, session)
             finally:
+                loop.run_until_complete(session.close())
                 connector.close()
 
     def serve(self, *args, **kwargs):

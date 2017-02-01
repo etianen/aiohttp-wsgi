@@ -46,7 +46,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from importlib import import_module
 from aiohttp.log import access_logger
-from aiohttp.web import Application, StaticRoute
+from aiohttp.web import Application
 import aiohttp_wsgi
 from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.wsgi import WSGIHandler, DEFAULTS, HELP
@@ -105,8 +105,7 @@ async def start_server(
         assert "=" in static_item, "{!r} should have format 'path=directory'"
         static_item = static_item.split("=", 1)
         path, dirname = static_item
-        static_resource = app.router.add_resource("{}/{{filename:.*}}".format(format_path(path)))
-        static_resource.add_route("*", StaticRoute(None, path + "/", dirname).handle)
+        app.router.add_static(format_path(path), dirname)
     # Add the wsgi application. This has to be last.
     app.router.add_route(
         "*",

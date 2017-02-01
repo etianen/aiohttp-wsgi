@@ -12,7 +12,7 @@ setup(
     url="https://github.com/etianen/aiohttp-wsgi",
     packages=find_packages(exclude=("tests",)),
     install_requires=[
-        "aiohttp>=1,<2",
+        "aiohttp>=1.2,<2",
     ],
     entry_points={
         "console_scripts": ["aiohttp-wsgi-serve=aiohttp_wsgi.__main__:main"],

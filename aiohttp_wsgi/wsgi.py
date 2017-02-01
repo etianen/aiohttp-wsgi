@@ -205,7 +205,7 @@ class WSGIHandler:
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
-        script_name = request.path[:len(request.path)-len(path_info)]
+        script_name = request.rel_url.path[:len(request.rel_url.path)-len(path_info)]
         # Special case: If the app was mounted on the root, then the script name will
         # currently be set to "/", which is illegal in the WSGI spec. The script name
         # could also end with a slash if the WSGIHandler was mounted as a route
@@ -227,7 +227,7 @@ class WSGIHandler:
             "REQUEST_METHOD": request.method,
             "SCRIPT_NAME": script_name,
             "PATH_INFO": path_info,
-            "QUERY_STRING": request.query_string,
+            "QUERY_STRING": request.rel_url.query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(content_length),
             "SERVER_NAME": server_name,
