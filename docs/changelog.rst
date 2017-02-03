@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.6.5
+-----
+
+- Fixed bug with unicode errors in querystring (@Антон Огородников).
+
+
 0.6.4
 -----
 
