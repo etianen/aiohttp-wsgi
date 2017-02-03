@@ -227,7 +227,7 @@ class WSGIHandler:
             "REQUEST_METHOD": request.method,
             "SCRIPT_NAME": script_name,
             "PATH_INFO": path_info,
-            "QUERY_STRING": request.rel_url.query_string,
+            "QUERY_STRING": request.rel_url.raw_query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(content_length),
             "SERVER_NAME": server_name,
