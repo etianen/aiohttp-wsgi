@@ -73,6 +73,7 @@ API reference
 """
 
 import sys
+import asyncio
 from asyncio import get_event_loop
 from io import BytesIO
 from tempfile import TemporaryFile
@@ -96,13 +97,15 @@ class ReadBuffer:
         self._content_length = 0
         self._overflow = False
 
-    async def _run(self, fn, *args):
+    @asyncio.coroutine
+    def _run(self, fn, *args):
         if self._overflow:
-            return await self._loop.run_in_executor(self._executor, fn, *args)
+            return (yield from self._loop.run_in_executor(self._executor, fn, *args))
         else:
             return fn(*args)
 
-    async def write(self, data):
+    @asyncio.coroutine
+    def write(self, data):
         self._content_length += len(data)
         # Check for body size overflow. The request might be streaming, so we check with every chunk.
         if self._content_length > self._max_request_body_size:
@@ -110,22 +113,21 @@ class ReadBuffer:
         # Overflow onto disk, if required.
         if not self._overflow and self._content_length > self._inbuf_overflow:
             self._overflow = True
-            overflow_body = await self._run(TemporaryFile)
-            await self._run(overflow_body.write, self._body.getbuffer())
+            overflow_body = yield from self._run(TemporaryFile)
+            yield from self._run(overflow_body.write, self._body.getbuffer())
             self._body.close()
             self._body = overflow_body
         # Write the block.
-        await self._run(self._body.write, data)
+        yield from self._run(self._body.write, data)
 
-    async def get_body(self):
-        await self._run(self._body.seek, 0)
+    @asyncio.coroutine
+    def get_body(self):
+        yield from self._run(self._body.seek, 0)
         return self._body, self._content_length
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *exc_info):
-        await self._run(self._body.close)
+    @asyncio.coroutine
+    def close(self):
+        yield from self._run(self._body.close)
 
 
 def _run_application(application, environ):
@@ -256,22 +258,25 @@ class WSGIHandler:
         # All done!
         return environ
 
-    async def handle_request(self, request):
+    @asyncio.coroutine
+    def handle_request(self, request):
         # Check for body size overflow.
         if request.content_length is not None and request.content_length > self._max_request_body_size:
             raise HTTPRequestEntityTooLarge()
         # Buffer the body.
-        async with ReadBuffer(self._inbuf_overflow, self._max_request_body_size, self._loop, self._executor) as body:
+        body_buffer = ReadBuffer(self._inbuf_overflow, self._max_request_body_size, self._loop, self._executor)
+
+        try:
             while True:
-                block = await request.content.readany()
+                block = yield from request.content.readany()
                 if not block:
                     break
-                await body.write(block)
+                yield from body_buffer.write(block)
             # Seek the body.
-            body, content_length = await body.get_body()
+            body, content_length = yield from body_buffer.get_body()
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
-            status, reason, headers, body = await self._loop.run_in_executor(
+            status, reason, headers, body = yield from self._loop.run_in_executor(
                 self._executor,
                 _run_application,
                 self._application,
@@ -285,8 +290,12 @@ class WSGIHandler:
                 body=body,
             )
 
-    async def __call__(self, request):
-        return await self.handle_request(request)
+        finally:
+            yield from body_buffer.close()
+
+    @asyncio.coroutine
+    def __call__(self, request):
+        return (yield from self.handle_request(request))
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
