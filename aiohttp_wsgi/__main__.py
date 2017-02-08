@@ -115,7 +115,7 @@ def start_server(
             application,
             loop=loop,
             executor=executor,
-            **kwargs,
+            **kwargs
         ),
     )
     # HACK: Access logging is broken in aiohtp for unix sockets.
@@ -333,4 +333,4 @@ def main():  # pragma: no cover
             pass
 
 
-__doc__ = __doc__.format(**HELP, help=textwrap.indent(parser.format_help(), "    "))
+__doc__ = __doc__.format(help=textwrap.indent(parser.format_help(), "    "), **HELP)

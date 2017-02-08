@@ -84,7 +84,7 @@ class AsyncTestCase(unittest.TestCase):
             "--host", "127.0.0.1",
             "--port", "0",
             *args,
-            **kwargs,
+            **kwargs
         )
 
     def serve_unix(self, *args, **kwargs):
@@ -93,5 +93,5 @@ class AsyncTestCase(unittest.TestCase):
         return self._serve(
             "--unix-socket", socket_file.name,
             *args,
-            **kwargs,
+            **kwargs
         )
