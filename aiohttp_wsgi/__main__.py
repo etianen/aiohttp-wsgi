@@ -206,7 +206,6 @@ HELP.update({
 parser = argparse.ArgumentParser(
     prog="aiohttp-wsgi-serve",
     description="Run a WSGI application.",
-    allow_abbrev=False,
 )
 
 
