@@ -1,20 +1,27 @@
 dist: trusty
 language: python
 python:
-  - 3.5
+- 3.5
 sudo: false
 env:
   global:
-    - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
-    - PYTHONASYNCIODEBUG=1
+  - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
+  - PYTHONASYNCIODEBUG=1
 before_install:
-  # Install the latest version of pyenv.
-  - rm -rf ~/.pyenv
-  - curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
-  # Install python.
-  - cat .python-version | xargs -n 1 pyenv install
+- rm -rf ~/.pyenv
+- curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+- cat .python-version | xargs -n 1 pyenv install
 install:
-  - pip install 'tox>=2.3.1'
+- pip install 'tox>=2.3.1'
 script: tox
 notifications:
   email: false
+deploy:
+  provider: pypi
+  user: etianen
+  password:
+    secure: X9E2HsOMOSmLcH0br9LlNy8EI7AYEf7lGKM2gCOgxWYd7M9i3rL9nPT8JJWzilQgCigjQ3L9q5wTSvp5LxxOVqCQgIUktTKXuIEJgWKcF6kKnq8usFETeXLAIAf4J0BnyGHK7pWTPA0ocZv4wmVfOEVymzwogbWT4uSs1vhFSRQ=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: etianen/aiohttp-wsgi
