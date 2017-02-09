@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.6.6
+-----
+
+- Python 3.4 support (@fscherf).
+
+
 0.6.5
 -----
 
