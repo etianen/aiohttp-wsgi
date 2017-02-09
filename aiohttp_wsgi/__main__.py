@@ -78,7 +78,8 @@ def start_loop(*, threads=4):
     return loop, executor
 
 
-async def start_server(
+@asyncio.coroutine
+def start_server(
     application,
     loop,
     executor,
@@ -114,7 +115,7 @@ async def start_server(
             application,
             loop=loop,
             executor=executor,
-            **kwargs,
+            **kwargs
         ),
     )
     # HACK: Access logging is broken in aiohtp for unix sockets.
@@ -124,13 +125,13 @@ async def start_server(
         "backlog": backlog,
     }
     if unix_socket is not None:
-        server = await loop.create_unix_server(
+        server = yield from loop.create_unix_server(
             handler,
             path=unix_socket,
             **shared_server_kwargs
         )
     else:
-        server = await loop.create_server(
+        server = yield from loop.create_server(
             handler,
             host=host,
             port=port,
@@ -150,7 +151,8 @@ async def start_server(
     return app, handler, server, server_uri
 
 
-async def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
+@asyncio.coroutine
+def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
     # Clean up unix sockets.
     for socket in server.sockets:
         host, port = parse_sockname(socket.getsockname())
@@ -159,12 +161,12 @@ async def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.
     # Close the server.
     logger.debug("Shutting down server on %s", server_uri)
     server.close()
-    await server.wait_closed()
+    yield from server.wait_closed()
     # Shut down app.
     logger.debug("Shutting down app on %s", server_uri)
-    await app.shutdown()
-    await handler.finish_connections(shutdown_timeout)
-    await app.cleanup()
+    yield from app.shutdown()
+    yield from handler.finish_connections(shutdown_timeout)
+    yield from app.cleanup()
 
 
 def close_loop(loop, executor, server_uri):
@@ -204,7 +206,6 @@ HELP.update({
 parser = argparse.ArgumentParser(
     prog="aiohttp-wsgi-serve",
     description="Run a WSGI application.",
-    allow_abbrev=False,
 )
 
 
@@ -331,4 +332,4 @@ def main():  # pragma: no cover
             pass
 
 
-__doc__ = __doc__.format(**HELP, help=textwrap.indent(parser.format_help(), "    "))
+__doc__ = __doc__.format(help=textwrap.indent(parser.format_help(), "    "), **HELP)

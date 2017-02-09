@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 import aiohttp
 from aiohttp_wsgi.__main__ import serve
 from aiohttp_wsgi.utils import parse_sockname
+import asyncio
 
 
 Response = namedtuple("Response", ("status", "reason", "headers", "content"))
@@ -56,7 +57,8 @@ def streaming_request_body():
         yield b"foobar"
 
 
-async def create_client_session(connector, loop):
+@asyncio.coroutine
+def create_client_session(connector, loop):
     return aiohttp.ClientSession(connector=connector, loop=loop)
 
 
@@ -82,7 +84,7 @@ class AsyncTestCase(unittest.TestCase):
             "--host", "127.0.0.1",
             "--port", "0",
             *args,
-            **kwargs,
+            **kwargs
         )
 
     def serve_unix(self, *args, **kwargs):
@@ -91,5 +93,5 @@ class AsyncTestCase(unittest.TestCase):
         return self._serve(
             "--unix-socket", socket_file.name,
             *args,
-            **kwargs,
+            **kwargs
         )

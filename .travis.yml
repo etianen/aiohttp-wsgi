@@ -1,17 +1,16 @@
+dist: trusty
 language: python
 sudo: false
-python:
-  - 3.5
 env:
-  matrix:
-    - TOXENV=py35
-    - TOXENV=flake8
-    - TOXENV=docs
   global:
     - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
     - PYTHONASYNCIODEBUG=1
-matrix:
-  fast_finish: true
+before_install:
+  # Install the latest version of pyenv.
+  - rm -rf ~/.pyenv
+  - curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+  # Install python.
+  - cat .python-version | xargs -n 1 pyenv install
 install:
   - pip install 'tox>=2.3.1'
 script: tox
