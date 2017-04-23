@@ -83,6 +83,13 @@ def assert_environ_root_subdir_trailing(environ):
     assert environ["PATH_INFO"] == "/bar"
 
 
+@environ_application
+def assert_environ_quoted_path_info(environ):
+    assert environ['PATH_INFO'] == "/테/스/트"
+    assert environ['RAW_URI'] == "/%ED%85%8C%2F%EC%8A%A4%2F%ED%8A%B8"
+    assert environ['REQUEST_URI'] == "/%ED%85%8C%2F%EC%8A%A4%2F%ED%8A%B8"
+
+
 class EnvironTest(AsyncTestCase):
 
     def testEnviron(self):
@@ -128,3 +135,7 @@ class EnvironTest(AsyncTestCase):
             "tests.test_environ:assert_environ_root_subdir_trailing"
         ) as client:
             client.assert_response(path="/foo/bar")
+
+    def testQuotedPathInfo(self):
+        with self.serve("tests.test_environ:assert_environ_quoted_path_info") as client:
+            client.assert_response(path="/%ED%85%8C%2F%EC%8A%A4%2F%ED%8A%B8")

@@ -229,6 +229,10 @@ class WSGIHandler:
             "REQUEST_METHOD": request.method,
             "SCRIPT_NAME": script_name,
             "PATH_INFO": path_info,
+            "RAW_URI": request.raw_path,
+            # RAW_URI: Gunicorn's non-standard field
+            "REQUEST_URI": request.raw_path,
+            # REQUEST_URI: uWSGI/Apache mod_wsgi's non-standard field
             "QUERY_STRING": request.rel_url.raw_query_string,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(content_length),
