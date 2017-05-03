@@ -52,9 +52,10 @@ def echo_application(environ, start_response):
     return [environ["wsgi.input"].read()]
 
 
-def streaming_request_body():
+@aiohttp.streamer
+def streaming_request_body(writer):
     for _ in range(100):
-        yield b"foobar"
+        yield from writer.write(b"foobar")
 
 
 @asyncio.coroutine

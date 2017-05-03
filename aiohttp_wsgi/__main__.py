@@ -73,6 +73,7 @@ def format_path(path):
 
 def start_loop(*, threads=4):
     loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     assert threads >= 1, "threads should be >= 1"
     executor = ThreadPoolExecutor(threads)
     return loop, executor
@@ -98,9 +99,7 @@ def start_server(
     script_name="",
     **kwargs
 ):
-    app = Application(
-        loop=loop,
-    )
+    app = Application()
     # Add static routes.
     for static_item in static:
         assert "=" in static_item, "{!r} should have format 'path=directory'"
@@ -170,18 +169,19 @@ def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
 
 
 def close_loop(loop, executor, server_uri):
-    # Shut down loop.
+    # Shut down executor.
     logger.debug("Shutting down executor on %s", server_uri)
     executor.shutdown()
-    # Shut down executor.
+    # Shut down loop.
     logger.debug("Shutting down loop on %s", server_uri)
     loop.close()
+    asyncio.set_event_loop(None)
 
 
 DEFAULTS = DEFAULTS.copy()
 DEFAULTS.update(start_loop.__kwdefaults__)
-DEFAULTS.update(start_server.__kwdefaults__)
-DEFAULTS.update(close_server.__kwdefaults__)
+DEFAULTS.update(start_server.__wrapped__.__kwdefaults__)
+DEFAULTS.update(close_server.__wrapped__.__kwdefaults__)
 
 HELP = HELP.copy()
 HELP.update({
