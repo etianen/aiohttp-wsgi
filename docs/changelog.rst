@@ -4,6 +4,13 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.7.0
+-----
+
+- Compatibility with aiohttp>=2 (@etianen).
+- Added ``"RAW_URI"`` and ``"REQUEST_URI"`` keys to the environ dict, allowing the original quoted path to be accessed (@dahlia).
+
+
 0.6.6
 -----
 
