@@ -23,15 +23,12 @@ class TestClient:
     def request(self, method="GET", path="/", **kwargs):
         uri = "http://{}:{}{}".format(self._host, self._port, path)
         response = self._loop.run_until_complete(self._session.request(method, uri, **kwargs))
-        try:
-            return Response(
-                response.status,
-                response.reason,
-                response.headers,
-                self._loop.run_until_complete(response.read()),
-            )
-        finally:
-            self._loop.run_until_complete(response.release())
+        return Response(
+            response.status,
+            response.reason,
+            response.headers,
+            self._loop.run_until_complete(response.read()),
+        )
 
     def assert_response(self, *args, data=b"", **kwargs):
         response = self.request(*args, data=data, **kwargs)
@@ -77,7 +74,7 @@ class AsyncTestCase(unittest.TestCase):
             try:
                 yield TestClient(self, loop, host, port, session)
             finally:
-                loop.run_until_complete(session.close())
+                session.close()
                 connector.close()
 
     def serve(self, *args, **kwargs):
