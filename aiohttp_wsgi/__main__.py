@@ -180,8 +180,8 @@ def close_loop(loop, executor, server_uri):
 
 DEFAULTS = DEFAULTS.copy()
 DEFAULTS.update(start_loop.__kwdefaults__)
-DEFAULTS.update(start_server.__wrapped__.__kwdefaults__)
-DEFAULTS.update(close_server.__wrapped__.__kwdefaults__)
+DEFAULTS.update(start_server.__kwdefaults__)
+DEFAULTS.update(close_server.__kwdefaults__)
 
 HELP = HELP.copy()
 HELP.update({
