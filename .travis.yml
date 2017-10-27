@@ -1,17 +1,18 @@
 dist: trusty
 language: python
 python:
-- 3.5
+- 3.6
 sudo: false
 env:
   global:
   - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning
   - PYTHONASYNCIODEBUG=1
-before_install:
-- rm -rf ~/.pyenv
-- curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
-- cat .python-version | xargs -n 1 pyenv install
 install:
+- pyenv install 3.6
+- pyenv install 3.5
+- pyenv install 3.4
+- pyenv install 2.7
+- pyenv shell 2.7 3.4 3.5 3.6
 - pip install 'tox>=2.3.1'
 script: tox
 notifications:
