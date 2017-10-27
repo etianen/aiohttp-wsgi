@@ -11,7 +11,7 @@ install:
 - pyenv install -s 3.6.3
 - pyenv install -s 3.5.3
 - pyenv install -s 3.4.6
-- pyenv install -s 2.7.14
+- pyenv install -s 2.7.13
 - pyenv shell 3.6 3.5 3.4 2.7
 - pip install 'tox>=2.3.1'
 script: tox
