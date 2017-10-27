@@ -3,6 +3,11 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+0.7.1
+-----
+
+- Compatibility with aiohttp>=2.3.1 (@etianen).
+
 
 0.7.0
 -----

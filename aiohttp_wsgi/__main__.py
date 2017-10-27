@@ -115,7 +115,7 @@ def start_server(
             loop=loop,
             executor=executor,
             **kwargs
-        ),
+        ).handle_request,
     )
     # HACK: Access logging is broken in aiohtp for unix sockets.
     handler = app.make_handler(access_log=access_logger if unix_socket is None else None)
@@ -164,7 +164,7 @@ def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
     # Shut down app.
     logger.debug("Shutting down app on %s", server_uri)
     yield from app.shutdown()
-    yield from handler.finish_connections(shutdown_timeout)
+    yield from handler.shutdown(shutdown_timeout)
     yield from app.cleanup()
 
 
@@ -180,8 +180,8 @@ def close_loop(loop, executor, server_uri):
 
 DEFAULTS = DEFAULTS.copy()
 DEFAULTS.update(start_loop.__kwdefaults__)
-DEFAULTS.update(start_server.__kwdefaults__)
-DEFAULTS.update(close_server.__kwdefaults__)
+DEFAULTS.update(start_server.__wrapped__.__kwdefaults__)
+DEFAULTS.update(close_server.__wrapped__.__kwdefaults__)
 
 HELP = HELP.copy()
 HELP.update({

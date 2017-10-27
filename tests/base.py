@@ -74,7 +74,7 @@ class AsyncTestCase(unittest.TestCase):
             try:
                 yield TestClient(self, loop, host, port, session)
             finally:
-                session.close()
+                loop.run_until_complete(session.close())
                 connector.close()
 
     def serve(self, *args, **kwargs):
