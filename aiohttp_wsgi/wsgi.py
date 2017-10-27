@@ -79,7 +79,7 @@ from io import BytesIO
 from tempfile import TemporaryFile
 from wsgiref.util import is_hop_by_hop
 from aiohttp.web import Response, HTTPRequestEntityTooLarge
-from aiohttp_wsgi.utils import parse_sockname
+from aiohttp_wsgi.utils import parse_sockname, get_kwdefaults
 
 
 class ReadBuffer:
@@ -302,7 +302,7 @@ class WSGIHandler:
         return (yield from self.handle_request(request))
 
 
-DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
+DEFAULTS = get_kwdefaults(WSGIHandler.__init__)
 
 HELP = {
     "application": "A WSGI application callable.",
