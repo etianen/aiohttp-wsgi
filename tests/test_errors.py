@@ -6,7 +6,7 @@ def error_handling_application(environ, start_response):
     try:
         start_response("200 OK", [])
         raise Exception("Boom!")
-    except:
+    except Exception:
         start_response("509 Boom", [], sys.exc_info())
         return [b"Boom!"]
 
