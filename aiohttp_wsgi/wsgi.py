@@ -138,7 +138,7 @@ def _run_application(application, environ):
         status_code = int(status_code)
         # Check the headers.
         for header_name, header_value in headers:
-            assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden"
+            assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden: {}".format(header_name)
         # Start the response.
         response_status = status_code
         response_reason = reason
