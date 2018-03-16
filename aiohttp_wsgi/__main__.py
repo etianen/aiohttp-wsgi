@@ -93,8 +93,8 @@ async def start_server(
     backlog=1024,
     # aiohttp config.
     static=(),
-    # Aiohttp config.
     script_name="",
+    shutdown_timeout=60.0,
     **kwargs
 ):
     app = Application()
@@ -119,9 +119,9 @@ async def start_server(
     await runner.setup()
     # Set up the server.
     if unix_socket is not None:
-        site = UnixSite(runner, path=unix_socket, backlog=backlog)
+        site = UnixSite(runner, path=unix_socket, backlog=backlog, shutdown_timeout=shutdown_timeout)
     else:
-        site = TCPSite(runner, host=host, port=port, backlog=backlog)
+        site = TCPSite(runner, host=host, port=port, backlog=backlog, shutdown_timeout=shutdown_timeout)
     await site.start()
     # Set socket permissions.
     if unix_socket is not None:
@@ -137,7 +137,7 @@ async def start_server(
     return app, runner, site, server_uri
 
 
-async def close_server(app, runner, site, server_uri, *, shutdown_timeout=60.0):
+async def close_server(app, runner, site, server_uri):
     # Clean up unix sockets.
     for socket in site._server.sockets:
         host, port = parse_sockname(socket.getsockname())
@@ -164,7 +164,6 @@ def close_loop(loop, executor, server_uri):
 DEFAULTS = DEFAULTS.copy()
 DEFAULTS.update(start_loop.__kwdefaults__)
 DEFAULTS.update(start_server.__kwdefaults__)
-DEFAULTS.update(close_server.__kwdefaults__)
 
 HELP = HELP.copy()
 HELP.update({
@@ -288,7 +287,6 @@ def serve(*argv):
     # Parse the args.
     args = vars(parser.parse_args(argv))
     application = import_func(args.pop("application"))
-    shutdown_timeout = args.pop("shutdown_timeout")
     # Set up logging.
     verbosity = (args.pop("verbose") - args.pop("quiet")) * 10
     logging.basicConfig(level=max(logging.ERROR - verbosity, logging.DEBUG), format="%(message)s")
@@ -301,7 +299,7 @@ def serve(*argv):
     try:
         yield loop, server
     finally:
-        loop.run_until_complete(close_server(app, handler, server, server_uri, shutdown_timeout=shutdown_timeout))
+        loop.run_until_complete(close_server(app, handler, server, server_uri))
         close_loop(loop, executor, server_uri)
         logger.info("Stopped serving on %s", server_uri)
 
