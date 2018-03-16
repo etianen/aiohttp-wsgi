@@ -9,12 +9,11 @@ Testing
 
 It's recommended to test :mod:`aiohttp_wsgi` in a virtual environment using :mod:`venv`.
 
-Run the test suite using `tox`_:
+Run the test suite using ``unittest``:
 
 .. code:: bash
 
-    pip install 'tox>=2.3.1'
-    tox
+    python -m unittest discover tests
 
 
 Contributors

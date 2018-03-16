@@ -10,5 +10,4 @@ Thumbs.db
 /dist
 /build
 /.cache
-/.tox
 /docs/_build

@@ -21,7 +21,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import os
 import aiohttp_wsgi
 
 # -- General configuration ------------------------------------------------
@@ -126,12 +125,6 @@ todo_include_todos = False
 
 
 # -- Options for HTML output ----------------------------------------------
-
-# Use RTD theme locally.
-if not os.environ.get('READTHEDOCS', None) == 'True':
-    import sphinx_rtd_theme
-    html_theme = "sphinx_rtd_theme"
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.

@@ -9,4 +9,3 @@
 .. _PEP3333: https://www.python.org/dev/peps/pep-3333/
 .. _pip: https://pip.pypa.io
 .. _source code: https://github.com/etianen/aiohttp-wsgi
-.. _tox: http://tox.readthedocs.io/

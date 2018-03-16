@@ -167,7 +167,7 @@ class WSGIHandler:
     """
     An adapter for WSGI applications, allowing them to run on :ref:`aiohttp <aiohttp-web>`.
 
-    :param callable application: {application}
+    :param application: {application}
     :param str url_scheme: {url_scheme}
     :param io.BytesIO stderr: {stderr}
     :param int inbuf_overflow: {inbuf_overflow}
