@@ -244,8 +244,7 @@ class WSGIHandler:
             body=body,
         )
 
-    async def __call__(self, request):
-        return (await self.handle_request(request))
+    __call__ = handle_request
 
 
 DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
