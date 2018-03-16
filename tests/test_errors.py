@@ -14,7 +14,7 @@ def error_handling_application(environ, start_response):
 class ErrorsTest(AsyncTestCase):
 
     def testErrorHandling(self):
-        with self.serve("tests.test_errors:error_handling_application") as client:
+        with self.run_server(error_handling_application) as client:
             response = client.request()
             self.assertEqual(response.status, 509)
             self.assertEqual(response.content, b"Boom!")

@@ -52,7 +52,7 @@ except ImportError:  # pragma: no cover
     # is importing aiohttp_wsgi to get __version__.
     pass
 else:
-    from aiohttp_wsgi.wsgi import WSGIHandler  # noqa
+    from aiohttp_wsgi.wsgi import WSGIHandler, serve  # noqa
 
 
 __version__ = "0.7.1"

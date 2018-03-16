@@ -3,7 +3,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 import aiohttp
-from aiohttp_wsgi.__main__ import serve
+from aiohttp_wsgi.wsgi import run_server
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -57,8 +57,8 @@ async def streaming_request_body(writer):
 class AsyncTestCase(unittest.TestCase):
 
     @contextmanager
-    def _serve(self, *args):
-        with serve("-q", *args) as (loop, site):
+    def _run_server(self, *args, **kwargs):
+        with run_server(*args, **kwargs) as (loop, site):
             host, port = parse_sockname(site._server.sockets[0].getsockname())
             if host == "unix":
                 connector = aiohttp.UnixConnector(path=port, loop=loop)
@@ -71,19 +71,19 @@ class AsyncTestCase(unittest.TestCase):
                 loop.run_until_complete(session.close())
                 connector.close()
 
-    def serve(self, *args, **kwargs):
-        return self._serve(
-            "--host", "127.0.0.1",
-            "--port", "0",
+    def run_server(self, *args, **kwargs):
+        return self._run_server(
             *args,
-            **kwargs
+            host="127.0.0.1",
+            port="0",
+            **kwargs,
         )
 
-    def serve_unix(self, *args, **kwargs):
+    def run_server_unix(self, *args, **kwargs):
         socket_file = NamedTemporaryFile()
         socket_file.close()
-        return self._serve(
-            "--unix-socket", socket_file.name,
+        return self._run_server(
             *args,
+            unix_socket=socket_file.name,
             **kwargs
         )

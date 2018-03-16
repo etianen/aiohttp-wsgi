@@ -93,13 +93,13 @@ def assert_environ_quoted_path_info(environ):
 class EnvironTest(AsyncTestCase):
 
     def testEnviron(self):
-        with self.serve("tests.test_environ:assert_environ") as client:
+        with self.run_server(assert_environ) as client:
             client.assert_response(headers={
                 "Foo": "bar",
             })
 
     def testEnvironPost(self):
-        with self.serve("tests.test_environ:assert_environ_post") as client:
+        with self.run_server(assert_environ_post) as client:
             client.assert_response(
                 method="POST",
                 headers={"Content-Type": "text/plain"},
@@ -107,35 +107,29 @@ class EnvironTest(AsyncTestCase):
             )
 
     def testEnvironUrlScheme(self):
-        with self.serve("--url-scheme", "https", "tests.test_environ:assert_environ_url_scheme") as client:
+        with self.run_server(assert_environ_url_scheme, url_scheme="https") as client:
             client.assert_response()
 
     def testEnvironUnixSocket(self):
-        with self.serve_unix("tests.test_environ:assert_environ_unix_socket") as client:
+        with self.run_server_unix(assert_environ_unix_socket) as client:
             client.assert_response()
 
     def testEnvironSubdir(self):
-        with self.serve("tests.test_environ:assert_environ_subdir") as client:
+        with self.run_server(assert_environ_subdir) as client:
             client.assert_response(path="/foo")
 
     def testEnvironRootSubdir(self):
-        with self.serve("--script-name", "/foo", "tests.test_environ:assert_environ_root_subdir") as client:
+        with self.run_server(assert_environ_root_subdir, script_name="/foo") as client:
             client.assert_response(path="/foo")
 
     def testEnvironRootSubdirSlash(self):
-        with self.serve(
-            "--script-name", "/foo",
-            "tests.test_environ:assert_environ_root_subdir_slash",
-        ) as client:
+        with self.run_server(assert_environ_root_subdir_slash, script_name="/foo") as client:
             client.assert_response(path="/foo/")
 
     def testEnvironRootSubdirTrailing(self):
-        with self.serve(
-            "--script-name", "/foo",
-            "tests.test_environ:assert_environ_root_subdir_trailing"
-        ) as client:
+        with self.run_server(assert_environ_root_subdir_trailing, script_name="/foo") as client:
             client.assert_response(path="/foo/bar")
 
     def testQuotedPathInfo(self):
-        with self.serve("tests.test_environ:assert_environ_quoted_path_info") as client:
+        with self.run_server(assert_environ_quoted_path_info) as client:
             client.assert_response(path="/%ED%85%8C%2F%EC%8A%A4%2F%ED%8A%B8")

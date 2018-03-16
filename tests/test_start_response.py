@@ -30,7 +30,7 @@ def streaming_response_write_application(environ, start_response):
 class StartResponseTest(AsyncTestCase):
 
     def testStartResponse(self):
-        with self.serve("tests.test_start_response:start_response_application") as client:
+        with self.run_server(start_response_application) as client:
             response = client.request()
             self.assertEqual(response.status, 201)
             self.assertEqual(response.reason, "Created")
@@ -38,11 +38,11 @@ class StartResponseTest(AsyncTestCase):
             self.assertEqual(response.content, b"foobar")
 
     def testStreamingResponse(self):
-        with self.serve("tests.test_start_response:streaming_response_application") as client:
+        with self.run_server(streaming_response_application) as client:
             response = client.request()
             self.assertEqual(response.content, RESPONSE_CONTENT)
 
     def testStreamingResponseWrite(self):
-        with self.serve("tests.test_start_response:streaming_response_write_application") as client:
+        with self.run_server(streaming_response_write_application) as client:
             response = client.request()
             self.assertEqual(response.content, RESPONSE_CONTENT)

@@ -14,8 +14,8 @@ This allows you to add async features like websockets and long-polling to an exi
     :mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simpler :doc:`command line interface <main>`.
 
 
-Run a simple web server
------------------------
+Run a web server
+----------------
 
 In order to implement a WSGI server, first import your WSGI application and wrap it in a :class:`WSGIHandler`.
 
@@ -46,6 +46,20 @@ See the :ref:`aiohttp.web <aiohttp-web>` documentation for information on adding
 :ref:`websockets <aiohttp-web-websockets>` and :ref:`async request handlers <aiohttp-web-handler>` to your app.
 
 
+Serving simple WSGI apps
+------------------------
+
+If you don't need to add :ref:`websockets <aiohttp-web-websockets>` or
+:ref:`async request handlers <aiohttp-web-handler>` to your app, but still want to run your WSGI app on the
+:mod:`asyncio` event loop, :mod:`aiohttp_wsgi` provides a simple :func:`serve()` helper.
+
+.. code:: python
+
+    from aiohttp_wsgi import serve
+
+    serve(application)
+
+
 Extra environ keys
 ------------------
 
@@ -68,16 +82,26 @@ API reference
 .. autoclass:: WSGIHandler
     :members:
 
+.. autofunction:: serve
+
 
 .. include:: /_include/links.rst
 """
 
+import asyncio
+import logging
+import os
 import sys
 from asyncio import get_event_loop
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from tempfile import SpooledTemporaryFile
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import Response, HTTPRequestEntityTooLarge
+from aiohttp.web import Application, AppRunner, TCPSite, UnixSite, Response, HTTPRequestEntityTooLarge
 from aiohttp_wsgi.utils import parse_sockname
+
+
+logger = logging.getLogger(__name__)
 
 
 def _run_application(application, environ):
@@ -247,7 +271,127 @@ class WSGIHandler:
     __call__ = handle_request
 
 
-DEFAULTS = WSGIHandler.__init__.__kwdefaults__.copy()
+def format_path(path):
+    assert not path.endswith("/"), "{!r} name should not end with /".format(path)
+    if path == "":
+        path = "/"
+    assert path.startswith("/"), "{!r} name should start with /".format(path)
+    return path
+
+
+@contextmanager
+def run_server(
+    application,
+    *,
+    # asyncio config.
+    threads=4,
+    # Server config.
+    host=None,
+    port=8080,
+    # Unix server config.
+    unix_socket=None,
+    unix_socket_perms=0o600,
+    # Shared server config.
+    backlog=1024,
+    # aiohttp config.
+    static=(),
+    script_name="",
+    shutdown_timeout=60.0,
+    **kwargs
+):
+    # Set up async context.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    assert threads >= 1, "threads should be >= 1"
+    executor = ThreadPoolExecutor(threads)
+    # Create aiohttp app.
+    app = Application()
+    # Add static routes.
+    for path, dirname in static:
+        app.router.add_static(format_path(path), dirname)
+    # Add the wsgi application. This has to be last.
+    app.router.add_route(
+        "*",
+        "{}{{path_info:.*}}".format(format_path(script_name)),
+        WSGIHandler(
+            application,
+            loop=loop,
+            executor=executor,
+            **kwargs
+        ).handle_request,
+    )
+    runner = AppRunner(app)
+    loop.run_until_complete(runner.setup())
+    # Set up the server.
+    if unix_socket is not None:
+        site = UnixSite(runner, path=unix_socket, backlog=backlog, shutdown_timeout=shutdown_timeout)
+    else:
+        site = TCPSite(runner, host=host, port=port, backlog=backlog, shutdown_timeout=shutdown_timeout)
+    loop.run_until_complete(site.start())
+    # Set socket permissions.
+    if unix_socket is not None:
+        os.chmod(unix_socket, unix_socket_perms)
+    # Report.
+    server_uri = " ".join(
+        "http://{}:{}".format(*parse_sockname(socket.getsockname()))
+        for socket
+        in site._server.sockets
+    )
+    logger.info("Serving on %s", server_uri)
+    try:
+        yield loop, site
+    finally:
+        # Clean up unix sockets.
+        for socket in site._server.sockets:
+            host, port = parse_sockname(socket.getsockname())
+            if host == "unix":
+                os.unlink(port)
+        # Close the server.
+        logger.debug("Shutting down server on %s", server_uri)
+        loop.run_until_complete(site.stop())
+        # Shut down app.
+        logger.debug("Shutting down app on %s", server_uri)
+        loop.run_until_complete(runner.cleanup())
+        # Shut down executor.
+        logger.debug("Shutting down executor on %s", server_uri)
+        executor.shutdown()
+        # Shut down loop.
+        logger.debug("Shutting down loop on %s", server_uri)
+        loop.close()
+        asyncio.set_event_loop(None)
+        # All done!
+        logger.info("Stopped serving on %s", server_uri)
+
+
+def serve(application, **kwargs):  # pragma: no cover
+    """
+    Runs the WSGI application on :ref:`aiohttp <aiohttp-web>`, serving it until keyboard interrupt.
+
+    :param application: {application}
+    :param str url_scheme: {url_scheme}
+    :param io.BytesIO stderr: {stderr}
+    :param int inbuf_overflow: {inbuf_overflow}
+    :param int max_request_body_size: {max_request_body_size}
+    :param int threads: {threads}
+    :param str host: {host}
+    :param int port: {port}
+    :param str unix_socket: {unix_socket}
+    :param int unix_socket_perms: {unix_socket_perms}
+    :param int backlog: {backlog}
+    :param list static: {static}
+    :param str script_name: {script_name}
+    :param int shutdown_timeout: {shutdown_timeout}
+    """
+    with run_server(application, **kwargs) as (loop, site):
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            pass
+
+
+DEFAULTS = {}
+DEFAULTS.update(WSGIHandler.__init__.__kwdefaults__)
+DEFAULTS.update(run_server.__wrapped__.__kwdefaults__)
 
 HELP = {
     "application": "A WSGI application callable.",
@@ -262,13 +406,31 @@ HELP = {
     "inbuf_overflow": (
         "A tempfile will be created if the request body is larger than this value, which is measured in bytes. "
         "Defaults to ``{inbuf_overflow!r}``."
-    ).format(**DEFAULTS),
+    ).format_map(DEFAULTS),
     "max_request_body_size": (
         "Maximum number of bytes in request body. Defaults to ``{max_request_body_size!r}``. "
         "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
-    ).format(**DEFAULTS),
+    ).format_map(DEFAULTS),
     "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
     "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",
+    "host": "Host interfaces to bind. Defaults to ``'0.0.0.0'`` and ``'::'``.",
+    "port": "Port to bind. Defaults to ``{port!r}``.".format_map(DEFAULTS),
+    "unix_socket": "Path to a unix socket to bind, cannot be used with ``host``.",
+    "unix_socket_perms": (
+        "Filesystem permissions to apply to the unix socket. Defaults to ``{unix_socket_perms!r}``."
+    ).format_map(DEFAULTS),
+    "backlog": "Socket connection backlog. Defaults to {backlog!r}.".format_map(DEFAULTS),
+    "static": "Static root mappings in the form (path, directory). Defaults to {static!r}".format_map(DEFAULTS),
+    "script_name": (
+        "URL prefix for the WSGI application, should start with a slash, but not end with a slash. "
+        "Defaults to ``{script_name!r}``."
+    ).format_map(DEFAULTS),
+    "threads": "Number of threads used to process application logic. Defaults to ``{threads!r}``.".format_map(DEFAULTS),
+    "shutdown_timeout": (
+        "Timeout when closing client connections on server shutdown. Defaults to ``{shutdown_timeout!r}``."
+    ).format_map(DEFAULTS),
 }
 
-WSGIHandler.__doc__ = WSGIHandler.__doc__.format(**HELP)
+WSGIHandler.__doc__ = WSGIHandler.__doc__.format_map(HELP)
+
+serve.__doc__ = serve.__doc__.format_map(HELP)
