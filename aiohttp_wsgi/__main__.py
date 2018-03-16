@@ -48,7 +48,7 @@ from importlib import import_module
 from aiohttp.log import access_logger
 from aiohttp.web import Application
 import aiohttp_wsgi
-from aiohttp_wsgi.utils import parse_sockname, get_kwdefaults
+from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.wsgi import WSGIHandler, DEFAULTS, HELP
 
 
@@ -177,9 +177,9 @@ def close_loop(loop, executor, server_uri):
 
 
 DEFAULTS = DEFAULTS.copy()
-DEFAULTS.update(get_kwdefaults(start_loop))
-DEFAULTS.update(get_kwdefaults(start_server))
-DEFAULTS.update(get_kwdefaults(close_server))
+DEFAULTS.update(start_loop.__kwdefaults__)
+DEFAULTS.update(start_server.__kwdefaults__)
+DEFAULTS.update(close_server.__kwdefaults__)
 
 HELP = HELP.copy()
 HELP.update({
