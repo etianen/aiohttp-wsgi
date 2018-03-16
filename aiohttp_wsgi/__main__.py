@@ -45,7 +45,7 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from importlib import import_module
-from aiohttp.web import Application
+from aiohttp.web import Application, AppRunner, TCPSite, UnixSite
 import aiohttp_wsgi
 from aiohttp_wsgi.utils import parse_sockname
 from aiohttp_wsgi.wsgi import WSGIHandler, DEFAULTS, HELP
@@ -115,24 +115,14 @@ async def start_server(
             **kwargs
         ).handle_request,
     )
-    handler = app.make_handler()
+    runner = AppRunner(app)
+    await runner.setup()
     # Set up the server.
-    shared_server_kwargs = {
-        "backlog": backlog,
-    }
     if unix_socket is not None:
-        server = await loop.create_unix_server(
-            handler,
-            path=unix_socket,
-            **shared_server_kwargs
-        )
+        site = UnixSite(runner, path=unix_socket, backlog=backlog)
     else:
-        server = await loop.create_server(
-            handler,
-            host=host,
-            port=port,
-            **shared_server_kwargs
-        )
+        site = TCPSite(runner, host=host, port=port, backlog=backlog)
+    await site.start()
     # Set socket permissions.
     if unix_socket is not None:
         os.chmod(unix_socket, unix_socket_perms)
@@ -140,28 +130,25 @@ async def start_server(
     server_uri = " ".join(
         "http://{}:{}".format(*parse_sockname(socket.getsockname()))
         for socket
-        in server.sockets
+        in site._server.sockets
     )
     logger.info("Serving on %s", server_uri)
     # All done!
-    return app, handler, server, server_uri
+    return app, runner, site, server_uri
 
 
-async def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
+async def close_server(app, runner, site, server_uri, *, shutdown_timeout=60.0):
     # Clean up unix sockets.
-    for socket in server.sockets:
+    for socket in site._server.sockets:
         host, port = parse_sockname(socket.getsockname())
         if host == "unix":
             os.unlink(port)
     # Close the server.
     logger.debug("Shutting down server on %s", server_uri)
-    server.close()
-    await server.wait_closed()
+    await site.stop()
     # Shut down app.
     logger.debug("Shutting down app on %s", server_uri)
-    await app.shutdown()
-    await handler.shutdown(shutdown_timeout)
-    await app.cleanup()
+    await runner.cleanup()
 
 
 def close_loop(loop, executor, server_uri):
