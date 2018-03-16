@@ -5,7 +5,6 @@ from tempfile import NamedTemporaryFile
 import aiohttp
 from aiohttp_wsgi.__main__ import serve
 from aiohttp_wsgi.utils import parse_sockname
-import asyncio
 
 
 Response = namedtuple("Response", ("status", "reason", "headers", "content"))
@@ -50,13 +49,12 @@ def echo_application(environ, start_response):
 
 
 @aiohttp.streamer
-def streaming_request_body(writer):
+async def streaming_request_body(writer):
     for _ in range(100):
-        yield from writer.write(b"foobar")
+        await writer.write(b"foobar")
 
 
-@asyncio.coroutine
-def create_client_session(connector, loop):
+async def create_client_session(connector, loop):
     return aiohttp.ClientSession(connector=connector, loop=loop)
 
 

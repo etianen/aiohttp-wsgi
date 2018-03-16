@@ -79,8 +79,7 @@ def start_loop(*, threads=4):
     return loop, executor
 
 
-@asyncio.coroutine
-def start_server(
+async def start_server(
     application,
     loop,
     executor,
@@ -124,13 +123,13 @@ def start_server(
         "backlog": backlog,
     }
     if unix_socket is not None:
-        server = yield from loop.create_unix_server(
+        server = await loop.create_unix_server(
             handler,
             path=unix_socket,
             **shared_server_kwargs
         )
     else:
-        server = yield from loop.create_server(
+        server = await loop.create_server(
             handler,
             host=host,
             port=port,
@@ -150,8 +149,7 @@ def start_server(
     return app, handler, server, server_uri
 
 
-@asyncio.coroutine
-def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
+async def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
     # Clean up unix sockets.
     for socket in server.sockets:
         host, port = parse_sockname(socket.getsockname())
@@ -160,12 +158,12 @@ def close_server(app, handler, server, server_uri, *, shutdown_timeout=60.0):
     # Close the server.
     logger.debug("Shutting down server on %s", server_uri)
     server.close()
-    yield from server.wait_closed()
+    await server.wait_closed()
     # Shut down app.
     logger.debug("Shutting down app on %s", server_uri)
-    yield from app.shutdown()
-    yield from handler.shutdown(shutdown_timeout)
-    yield from app.cleanup()
+    await app.shutdown()
+    await handler.shutdown(shutdown_timeout)
+    await app.cleanup()
 
 
 def close_loop(loop, executor, server_uri):
