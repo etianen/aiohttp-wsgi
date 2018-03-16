@@ -3,6 +3,15 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+0.8.0
+-----
+
+- Added new :func:`serve()` helper for simple WSGI applications that don't need :ref:`websockets <aiohttp-web-websockets>` or :ref:`async request handlers <aiohttp-web-handler>` (@etianen).
+- Updated :mod:`aiohttp` dependency to ``>=3`` (@etianen).
+- Improved error message for invalid hop-by-hop headers (@chriskuehl).
+- **Breaking:** Dropped support for Python 3.4 (@etianen).
+
+
 0.7.1
 -----
 
