@@ -45,7 +45,6 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from importlib import import_module
-from aiohttp.log import access_logger
 from aiohttp.web import Application
 import aiohttp_wsgi
 from aiohttp_wsgi.utils import parse_sockname
@@ -116,8 +115,7 @@ async def start_server(
             **kwargs
         ).handle_request,
     )
-    # HACK: Access logging is broken in aiohtp for unix sockets.
-    handler = app.make_handler(access_log=access_logger if unix_socket is None else None)
+    handler = app.make_handler()
     # Set up the server.
     shared_server_kwargs = {
         "backlog": backlog,
