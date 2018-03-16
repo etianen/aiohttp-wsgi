@@ -121,7 +121,10 @@ class ReadBuffer:
         await self._run(self._body.seek, 0)
         return self._body, self._content_length
 
-    async def close(self):
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
         await self._run(self._body.close)
 
 
@@ -263,8 +266,7 @@ class WSGIHandler:
             raise HTTPRequestEntityTooLarge()
         # Buffer the body.
         body_buffer = ReadBuffer(self._inbuf_overflow, self._max_request_body_size, self._loop, self._executor)
-
-        try:
+        async with body_buffer:
             while True:
                 block = await request.content.readany()
                 if not block:
@@ -287,9 +289,6 @@ class WSGIHandler:
                 headers=headers,
                 body=body,
             )
-
-        finally:
-            await body_buffer.close()
 
     async def __call__(self, request):
         return (await self.handle_request(request))
