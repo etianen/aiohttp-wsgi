@@ -70,19 +70,11 @@ def format_path(path):
     return path
 
 
-def start_loop(*, threads=4):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    assert threads >= 1, "threads should be >= 1"
-    executor = ThreadPoolExecutor(threads)
-    return loop, executor
-
-
-async def start_server(
+def start_server(
     application,
-    loop,
-    executor,
     *,
+    # asyncio config.
+    threads=4,
     # Server config.
     host=None,
     port=8080,
@@ -97,6 +89,12 @@ async def start_server(
     shutdown_timeout=60.0,
     **kwargs
 ):
+    # Set up async context.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    assert threads >= 1, "threads should be >= 1"
+    executor = ThreadPoolExecutor(threads)
+    # Create aiohttp app.
     app = Application()
     # Add static routes.
     for static_item in static:
@@ -116,13 +114,13 @@ async def start_server(
         ).handle_request,
     )
     runner = AppRunner(app)
-    await runner.setup()
+    loop.run_until_complete(runner.setup())
     # Set up the server.
     if unix_socket is not None:
         site = UnixSite(runner, path=unix_socket, backlog=backlog, shutdown_timeout=shutdown_timeout)
     else:
         site = TCPSite(runner, host=host, port=port, backlog=backlog, shutdown_timeout=shutdown_timeout)
-    await site.start()
+    loop.run_until_complete(site.start())
     # Set socket permissions.
     if unix_socket is not None:
         os.chmod(unix_socket, unix_socket_perms)
@@ -134,10 +132,10 @@ async def start_server(
     )
     logger.info("Serving on %s", server_uri)
     # All done!
-    return app, runner, site, server_uri
+    return loop, executor, app, runner, site, server_uri
 
 
-async def close_server(app, runner, site, server_uri):
+def close_server(loop, executor, app, runner, site, server_uri):
     # Clean up unix sockets.
     for socket in site._server.sockets:
         host, port = parse_sockname(socket.getsockname())
@@ -145,13 +143,10 @@ async def close_server(app, runner, site, server_uri):
             os.unlink(port)
     # Close the server.
     logger.debug("Shutting down server on %s", server_uri)
-    await site.stop()
+    loop.run_until_complete(site.stop())
     # Shut down app.
     logger.debug("Shutting down app on %s", server_uri)
-    await runner.cleanup()
-
-
-def close_loop(loop, executor, server_uri):
+    loop.run_until_complete(runner.cleanup())
     # Shut down executor.
     logger.debug("Shutting down executor on %s", server_uri)
     executor.shutdown()
@@ -162,7 +157,6 @@ def close_loop(loop, executor, server_uri):
 
 
 DEFAULTS = DEFAULTS.copy()
-DEFAULTS.update(start_loop.__kwdefaults__)
 DEFAULTS.update(start_server.__kwdefaults__)
 
 HELP = HELP.copy()
@@ -293,14 +287,11 @@ def serve(*argv):
     logging.getLogger("aiohttp").setLevel(max(logging.INFO - verbosity, logging.DEBUG))
     logger.setLevel(max(logging.INFO - verbosity, logging.DEBUG))
     # Serve the app.
-    threads = args.pop("threads")
-    loop, executor = start_loop(threads=threads)
-    app, handler, server, server_uri = loop.run_until_complete(start_server(application, loop, executor, **args))
+    loop, executor, app, handler, server, server_uri = start_server(application, **args)
     try:
         yield loop, server
     finally:
-        loop.run_until_complete(close_server(app, handler, server, server_uri))
-        close_loop(loop, executor, server_uri)
+        close_server(loop, executor, app, handler, server, server_uri)
         logger.info("Stopped serving on %s", server_uri)
 
 
