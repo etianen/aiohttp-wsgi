@@ -108,6 +108,10 @@ add_argument(
     ),
 )
 add_argument(
+    "--static-cors",
+    type=str,
+)
+add_argument(
     "--script-name",
 )
 add_argument(

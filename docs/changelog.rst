@@ -3,6 +3,14 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+
+0.8.1
+-----
+
+- Added ``static_cors`` argument to :func:`serve()`, allowing CORS to be configured for static files.
+- Added ``--static-cors`` argument to :doc:`aiohttp-wsgi-serve <main>` command line interface.
+
+
 0.8.0
 -----
 

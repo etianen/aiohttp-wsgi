@@ -97,7 +97,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from tempfile import SpooledTemporaryFile
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import Application, AppRunner, TCPSite, UnixSite, Response, HTTPRequestEntityTooLarge
+from aiohttp.web import Application, AppRunner, TCPSite, UnixSite, Response, HTTPRequestEntityTooLarge, middleware
 from aiohttp_wsgi.utils import parse_sockname
 
 
@@ -279,6 +279,18 @@ def format_path(path):
     return path
 
 
+def static_cors_middleware(*, static, static_cors):
+    @middleware
+    async def do_static_cors_middleware(request, handler):
+        response = await handler(request)
+        for path, _ in static:
+            if request.path.startswith(path):
+                response.headers["Access-Control-Allow-Origin"] = static_cors
+                break
+        return response
+    return do_static_cors_middleware
+
+
 @contextmanager
 def run_server(
     application,
@@ -295,6 +307,7 @@ def run_server(
     backlog=1024,
     # aiohttp config.
     static=(),
+    static_cors=None,
     script_name="",
     shutdown_timeout=60.0,
     **kwargs
@@ -307,8 +320,9 @@ def run_server(
     # Create aiohttp app.
     app = Application()
     # Add static routes.
+    static = [(format_path(path), dirname) for path, dirname in static]
     for path, dirname in static:
-        app.router.add_static(format_path(path), dirname)
+        app.router.add_static(path, dirname)
     # Add the wsgi application. This has to be last.
     app.router.add_route(
         "*",
@@ -320,6 +334,13 @@ def run_server(
             **kwargs
         ).handle_request,
     )
+    # Configure middleware.
+    if static_cors:
+        app.middlewares.append(static_cors_middleware(
+            static=static,
+            static_cors=static_cors,
+        ))
+    # Start the app runner.
     runner = AppRunner(app)
     loop.run_until_complete(runner.setup())
     # Set up the server.
@@ -379,6 +400,7 @@ def serve(application, **kwargs):  # pragma: no cover
     :param int unix_socket_perms: {unix_socket_perms}
     :param int backlog: {backlog}
     :param list static: {static}
+    :param list static_cors: {static_cors}
     :param str script_name: {script_name}
     :param int shutdown_timeout: {shutdown_timeout}
     """
@@ -421,6 +443,10 @@ HELP = {
     ).format_map(DEFAULTS),
     "backlog": "Socket connection backlog. Defaults to {backlog!r}.".format_map(DEFAULTS),
     "static": "Static root mappings in the form (path, directory). Defaults to {static!r}".format_map(DEFAULTS),
+    "static_cors": (
+        "Set to '*' to enable CORS on static files for all origins, or a string to enable CORS for a specific origin. "
+        "Defaults to {static_cors!r}"
+    ).format_map(DEFAULTS),
     "script_name": (
         "URL prefix for the WSGI application, should start with a slash, but not end with a slash. "
         "Defaults to ``{script_name!r}``."

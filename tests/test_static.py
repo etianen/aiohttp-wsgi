@@ -23,3 +23,10 @@ class StaticTest(AsyncTestCase):
         with self.run_server(noop_application, static=STATIC) as client:
             response = client.request(path="/static/missing.txt")
             self.assertEqual(response.status, 404)
+
+    def testStaticHitCors(self):
+        with self.run_server(noop_application, static=STATIC, static_cors="*") as client:
+            response = client.request(path="/static/text.txt")
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.content, b"Test file")
+            self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
