@@ -92,7 +92,6 @@ import asyncio
 import logging
 import os
 import sys
-from asyncio import get_event_loop
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from tempfile import SpooledTemporaryFile
@@ -176,7 +175,7 @@ class WSGIHandler:
         self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
-        self._loop = loop or get_event_loop()
+        self._loop = loop or asyncio.get_event_loop()
 
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
