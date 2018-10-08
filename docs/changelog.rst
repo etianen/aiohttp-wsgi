@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.8.2
+-----
+
+- Added support for ``aiohttp >= 3.4`` (@michael-k).
+
+
 0.8.1
 -----
 
