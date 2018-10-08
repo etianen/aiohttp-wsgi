@@ -66,7 +66,7 @@ Extra environ keys
 :mod:`aiohttp_wsgi` adds the following additional keys to the WSGI environ:
 
 ``asyncio.loop``
-    The :class:`EventLoop <asyncio.BaseEventLoop>` running the server.
+    The ``asyncio.EventLoop`` running the server.
 
 ``asyncio.executor``
     The :class:`Executor <concurrent.futures.Executor>` running the WSGI request.
@@ -146,7 +146,7 @@ class WSGIHandler:
     :param int inbuf_overflow: {inbuf_overflow}
     :param int max_request_body_size: {max_request_body_size}
     :param concurrent.futures.Executor executor: {executor}
-    :param asyncio.BaseEventLoop loop: {loop}
+    :param loop: {loop}
     """
 
     def __init__(
