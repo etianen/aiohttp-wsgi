@@ -238,13 +238,10 @@ class WSGIHandler:
     async def handle_request(self, request):
         # Check for body size overflow.
         if request.content_length is not None and request.content_length > self._max_request_body_size:
-            try:
-                raise HTTPRequestEntityTooLarge(
-                    max_size=self._max_request_body_size,
-                    actual_size=request.content_length,
-                )
-            except TypeError:
-                raise HTTPRequestEntityTooLarge()
+            raise HTTPRequestEntityTooLarge(
+                max_size=self._max_request_body_size,
+                actual_size=request.content_length,
+            )
         # Buffer the body.
         content_length = 0
         with SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
@@ -254,13 +251,10 @@ class WSGIHandler:
                     break
                 content_length += len(block)
                 if content_length > self._max_request_body_size:
-                    try:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=self._max_request_body_size,
-                            actual_size=content_length,
-                        )
-                    except TypeError:
-                        raise HTTPRequestEntityTooLarge()
+                    raise HTTPRequestEntityTooLarge(
+                        max_size=self._max_request_body_size,
+                        actual_size=content_length,
+                    )
                 body.write(block)
             body.seek(0)
             # Get the environ.
