@@ -12,7 +12,7 @@ setup(
     url="https://github.com/etianen/aiohttp-wsgi",
     packages=find_packages(exclude=("tests",)),
     install_requires=[
-        "aiohttp>=3,<4",
+        "aiohttp>=3.4,<4",
     ],
     entry_points={
         "console_scripts": ["aiohttp-wsgi-serve=aiohttp_wsgi.__main__:main"],
@@ -25,8 +25,9 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Framework :: Django",
     ],
 )

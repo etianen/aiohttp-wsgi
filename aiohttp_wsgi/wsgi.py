@@ -92,7 +92,6 @@ import asyncio
 import logging
 import os
 import sys
-from asyncio import get_event_loop
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from tempfile import SpooledTemporaryFile
@@ -176,7 +175,7 @@ class WSGIHandler:
         self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
-        self._loop = loop or get_event_loop()
+        self._loop = loop or asyncio.get_event_loop()
 
     def _get_environ(self, request, body, content_length):
         # Resolve the path info.
@@ -239,7 +238,10 @@ class WSGIHandler:
     async def handle_request(self, request):
         # Check for body size overflow.
         if request.content_length is not None and request.content_length > self._max_request_body_size:
-            raise HTTPRequestEntityTooLarge()
+            raise HTTPRequestEntityTooLarge(
+                max_size=self._max_request_body_size,
+                actual_size=request.content_length,
+            )
         # Buffer the body.
         content_length = 0
         with SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
@@ -249,7 +251,10 @@ class WSGIHandler:
                     break
                 content_length += len(block)
                 if content_length > self._max_request_body_size:
-                    raise HTTPRequestEntityTooLarge()
+                    raise HTTPRequestEntityTooLarge(
+                        max_size=self._max_request_body_size,
+                        actual_size=content_length,
+                    )
                 body.write(block)
             body.seek(0)
             # Get the environ.
