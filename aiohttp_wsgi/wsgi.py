@@ -94,45 +94,99 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from tempfile import SpooledTemporaryFile
 from wsgiref.util import is_hop_by_hop
-from aiohttp.web import Application, AppRunner, TCPSite, UnixSite, Response, HTTPRequestEntityTooLarge, middleware
+from aiohttp.web import Application, AppRunner, TCPSite, UnixSite, middleware, StreamResponse
 from aiohttp_wsgi.utils import parse_sockname
 
 
 logger = logging.getLogger(__name__)
 
 
-def _run_application(application, environ):
+def read_chunk(body_iterable, size_limit=None):
+    """
+    Buffer the data by a size_limit. Returns a partial chunk of the data in bytes
+
+    :param Generator body_iterable: {body_iterable}
+    :param int size_limit: {size_limit}
+    """
+
+    chunks = bytearray()
+    for chunk in body_iterable:
+        chunks.extend(chunk)
+
+        if size_limit is not None and len(chunks) > size_limit:
+            break
+
+    return chunks
+
+
+class WSGIRequest:
+    def __init__(self):
+        self._response = None
+        self._header_leftover = []
+
     # Simple start_response callable.
-    def start_response(status, headers, exc_info=None):
-        nonlocal response_status, response_reason, response_headers, response_body
+    def start_response(self, status, headers, exc_info=None):
         status_code, reason = status.split(None, 1)
         status_code = int(status_code)
         # Check the headers.
         for header_name, header_value in headers:
             assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden: {}".format(header_name)
+
+        self._response = StreamResponse(status=status_code, reason=reason, headers=headers)
         # Start the response.
-        response_status = status_code
-        response_reason = reason
-        response_headers = headers
-        del response_body[:]
-        return response_body.append
-    # Response data.
-    response_status = None
-    response_reason = None
-    response_headers = None
-    response_body = []
-    # Run the application.
-    body_iterable = application(environ, start_response)
-    try:
-        response_body.extend(body_iterable)
-        assert response_status is not None, "application did not call start_response()"
-        return response_status, response_reason, response_headers, b"".join(response_body)
-    finally:
-        # Close the body.
-        if hasattr(body_iterable, "close"):
-            body_iterable.close()
+        return self._header_leftover.append
+
+    def run_application(self, application, request, environ, loop):
+        # body_iterable must be an iterator and not a list
+        body_iterable = iter(application(environ, self.start_response))
+
+        if self._response is None:
+            self._header_leftover.append(next(body_iterable))
+        assert self._response is not None
+
+        try:
+            asyncio.run_coroutine_threadsafe(self._response.prepare(request), loop).result()
+            if self._header_leftover:
+                asyncio.run_coroutine_threadsafe(self._response.write(b''.join(self._header_leftover)), loop).result()
+
+            while True:
+                # buffer to 1 MB in order to not overload the event loop
+                chunk = read_chunk(body_iterable, 1024 * 1024)
+                if not chunk:
+                    break
+                asyncio.run_coroutine_threadsafe(self._response.write(chunk), loop).result()
+        finally:
+            if hasattr(body_iterable, "close"):
+                body_iterable.close()
+
+            asyncio.run_coroutine_threadsafe(self._response.write_eof(), loop).result()
+
+        return self._response
+
+
+class WSGIBodyReader:
+    def __init__(self, request, loop):
+        self._request = request
+        self._loop = loop
+
+    def read(self, size=None):
+        try:
+            if size:
+                return asyncio.run_coroutine_threadsafe(self._request.content.readexactly(size), self._loop).result()
+
+            return asyncio.run_coroutine_threadsafe(self._request.content.read(), self._loop).result()
+        except asyncio.IncompleteReadError as e:
+            return e.partial
+
+    def readline(self):
+        return asyncio.run_coroutine_threadsafe(self._request.content.readline(), self._loop).result()
+
+    def readlines(self):
+        return asyncio.run_coroutine_threadsafe(self._request.content.readlines(), self._loop).result()
+
+    def __iter__(self):
+        return asyncio.run_coroutine_threadsafe(self._request.content.readany(), self._loop).result()
 
 
 class WSGIHandler:
@@ -143,8 +197,6 @@ class WSGIHandler:
     :param application: {application}
     :param str url_scheme: {url_scheme}
     :param io.BytesIO stderr: {stderr}
-    :param int inbuf_overflow: {inbuf_overflow}
-    :param int max_request_body_size: {max_request_body_size}
     :param concurrent.futures.Executor executor: {executor}
     :param loop: {loop}
     """
@@ -156,8 +208,6 @@ class WSGIHandler:
         # Handler config.
         url_scheme=None,
         stderr=None,
-        inbuf_overflow=524288,
-        max_request_body_size=1073741824,
         # asyncio config.
         executor=None,
         loop=None
@@ -167,17 +217,11 @@ class WSGIHandler:
         # Handler config.
         self._url_scheme = url_scheme
         self._stderr = stderr or sys.stderr
-        assert isinstance(inbuf_overflow, int), "inbuf_overflow should be int"
-        assert inbuf_overflow >= 0, "inbuf_overflow should be >= 0"
-        self._inbuf_overflow = inbuf_overflow
-        assert isinstance(max_request_body_size, int), "max_request_body_size should be int"
-        assert max_request_body_size >= 0, "max_request_body_size should be >= 0"
-        self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
 
-    def _get_environ(self, request, body, content_length):
+    def _get_environ(self, request, body):
         # Resolve the path info.
         path_info = request.match_info["path_info"]
         script_name = request.rel_url.path[:len(request.rel_url.path)-len(path_info)]
@@ -207,8 +251,7 @@ class WSGIHandler:
             "REQUEST_URI": request.raw_path,
             # REQUEST_URI: uWSGI/Apache mod_wsgi's non-standard field
             "QUERY_STRING": request.rel_url.raw_query_string,
-            "CONTENT_TYPE": request.headers.get("Content-Type", ""),
-            "CONTENT_LENGTH": str(content_length),
+            "CONTENT_TYPE": request.content_type,
             "SERVER_NAME": server_name,
             "SERVER_PORT": server_port,
             "REMOTE_ADDR": remote_addr,
@@ -222,10 +265,11 @@ class WSGIHandler:
             "wsgi.multithread": True,
             "wsgi.multiprocess": False,
             "wsgi.run_once": False,
-            "asyncio.loop": self._loop,
-            "asyncio.executor": self._executor,
-            "aiohttp.request": request,
         }
+
+        if request.content_length is not None:
+            environ["CONTENT_LENGTH"] = str(request.content_length)
+
         # Add in additional HTTP headers.
         for header_name in request.headers:
             header_name = header_name.upper()
@@ -236,41 +280,10 @@ class WSGIHandler:
         return environ
 
     async def handle_request(self, request):
-        # Check for body size overflow.
-        if request.content_length is not None and request.content_length > self._max_request_body_size:
-            raise HTTPRequestEntityTooLarge(
-                max_size=self._max_request_body_size,
-                actual_size=request.content_length,
-            )
-        # Buffer the body.
-        content_length = 0
-        with SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
-            while True:
-                block = await request.content.readany()
-                if not block:
-                    break
-                content_length += len(block)
-                if content_length > self._max_request_body_size:
-                    raise HTTPRequestEntityTooLarge(
-                        max_size=self._max_request_body_size,
-                        actual_size=content_length,
-                    )
-                body.write(block)
-            body.seek(0)
-            # Get the environ.
-            environ = self._get_environ(request, body, content_length)
-            status, reason, headers, body = await self._loop.run_in_executor(
-                self._executor,
-                _run_application,
-                self._application,
-                environ,
-            )
-        # All done!
-        return Response(
-            status=status,
-            reason=reason,
-            headers=headers,
-            body=body,
+        body = WSGIBodyReader(request, self._loop)
+        environ = self._get_environ(request, body)
+        return await self._loop.run_in_executor(
+            self._executor, WSGIRequest().run_application, self._application, request, environ, self._loop
         )
 
     __call__ = handle_request
@@ -396,8 +409,6 @@ def serve(application, **kwargs):  # pragma: no cover
     :param application: {application}
     :param str url_scheme: {url_scheme}
     :param io.BytesIO stderr: {stderr}
-    :param int inbuf_overflow: {inbuf_overflow}
-    :param int max_request_body_size: {max_request_body_size}
     :param int threads: {threads}
     :param str host: {host}
     :param int port: {port}
@@ -430,14 +441,6 @@ HELP = {
         "A file-like value for WSGI error logging. Corresponds to ``environ['wsgi.errors']``. "
         "Defaults to ``sys.stderr``."
     ),
-    "inbuf_overflow": (
-        "A tempfile will be created if the request body is larger than this value, which is measured in bytes. "
-        "Defaults to ``{inbuf_overflow!r}``."
-    ).format_map(DEFAULTS),
-    "max_request_body_size": (
-        "Maximum number of bytes in request body. Defaults to ``{max_request_body_size!r}``. "
-        "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
-    ).format_map(DEFAULTS),
     "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
     "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",
     "host": "Host interfaces to bind. Defaults to ``'0.0.0.0'`` and ``'::'``.",
@@ -460,6 +463,8 @@ HELP = {
     "shutdown_timeout": (
         "Timeout when closing client connections on server shutdown. Defaults to ``{shutdown_timeout!r}``."
     ).format_map(DEFAULTS),
+    "size_limit": "Size limit in bytes",
+    "body_iterable": "A generator containing the body data returned from the WSGI request"
 }
 
 WSGIHandler.__doc__ = WSGIHandler.__doc__.format_map(HELP)

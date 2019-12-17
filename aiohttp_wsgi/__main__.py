@@ -122,12 +122,6 @@ add_argument(
     "--threads",
 )
 add_argument(
-    "--inbuf-overflow",
-)
-add_argument(
-    "--max-request-body-size",
-)
-add_argument(
     "--shutdown-timeout",
 )
 add_argument(

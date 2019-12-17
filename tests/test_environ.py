@@ -18,8 +18,7 @@ def assert_environ(environ):
     assert environ["REQUEST_METHOD"] == "GET"
     assert environ["SCRIPT_NAME"] == ""
     assert environ["PATH_INFO"] == "/"
-    assert environ["CONTENT_TYPE"] == ""
-    assert environ["CONTENT_LENGTH"] == "0"
+    assert environ["CONTENT_TYPE"] == "application/octet-stream"
     assert environ["SERVER_NAME"] == "127.0.0.1"
     assert int(environ["SERVER_PORT"]) > 0
     assert environ["REMOTE_ADDR"] == "127.0.0.1"
@@ -33,9 +32,6 @@ def assert_environ(environ):
     assert environ["wsgi.multithread"]
     assert not environ["wsgi.multiprocess"]
     assert not environ["wsgi.run_once"]
-    assert isinstance(environ["asyncio.loop"], asyncio.BaseEventLoop)
-    assert isinstance(environ["asyncio.executor"], ThreadPoolExecutor)
-    assert "aiohttp.request" in environ
 
 
 @environ_application
