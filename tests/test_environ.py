@@ -1,5 +1,3 @@
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from io import TextIOBase
 from tests.base import AsyncTestCase, noop_application
