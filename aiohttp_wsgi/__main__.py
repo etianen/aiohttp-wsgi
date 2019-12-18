@@ -122,6 +122,9 @@ add_argument(
     "--threads",
 )
 add_argument(
+    "--buffer_size",
+)
+add_argument(
     "--shutdown-timeout",
 )
 add_argument(

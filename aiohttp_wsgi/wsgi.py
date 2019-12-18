@@ -102,28 +102,14 @@ from aiohttp_wsgi.utils import parse_sockname
 logger = logging.getLogger(__name__)
 
 
-def read_chunk(body_iterable, size_limit=None):
-    """
-    Buffer the data by a size_limit. Returns a partial chunk of the data in bytes
-
-    :param Generator body_iterable: {body_iterable}
-    :param int size_limit: {size_limit}
-    """
-
-    chunks = bytearray()
-    for chunk in body_iterable:
-        chunks.extend(chunk)
-
-        if size_limit is not None and len(chunks) > size_limit:
-            break
-
-    return chunks
-
-
 class WSGIRequest:
-    def __init__(self):
+    def __init__(self, request, loop):
+        self._request = request
+        self._loop = loop
         self._response = None
-        self._header_leftover = []
+        self._status_code = None
+        self._reason = None
+        self._headers = None
 
     # Simple start_response callable.
     def start_response(self, status, headers, exc_info=None):
@@ -132,35 +118,41 @@ class WSGIRequest:
         # Check the headers.
         for header_name, header_value in headers:
             assert not is_hop_by_hop(header_name), "hop-by-hop headers are forbidden: {}".format(header_name)
+        self._status_code, self._reason, self._headers = status_code, reason, headers
 
-        self._response = StreamResponse(status=status_code, reason=reason, headers=headers)
-        # Start the response.
-        return self._header_leftover.append
+        return self.write
 
-    def run_application(self, application, request, environ, loop):
-        # body_iterable must be an iterator and not a list
-        body_iterable = iter(application(environ, self.start_response))
+    def prepare(self):
+        asyncio.run_coroutine_threadsafe(self._response.prepare(self._request), self._loop).result()
 
+    def write(self, chunk):
+        # according to PEP 333: On the first write on the response the prepare should be called
         if self._response is None:
-            self._header_leftover.append(next(body_iterable))
-        assert self._response is not None
+            self._response = StreamResponse(status=self._status_code, reason=self._reason, headers=self._headers)
+            self.prepare()
+
+        asyncio.run_coroutine_threadsafe(self._response.write(chunk), self._loop).result()
+
+    def write_eof(self):
+        asyncio.run_coroutine_threadsafe(self._response.write_eof(), self._loop).result()
+
+    def run_application(self, application, environ, buffer_size):
+        body_iterable = application(environ, self.start_response)
 
         try:
-            asyncio.run_coroutine_threadsafe(self._response.prepare(request), loop).result()
-            if self._header_leftover:
-                asyncio.run_coroutine_threadsafe(self._response.write(b''.join(self._header_leftover)), loop).result()
+            chunks = bytearray()
+            for chunk in body_iterable:
+                chunks.extend(chunk)
+                if len(chunks) >= buffer_size:
+                    self.write(chunks)
+                    chunks = bytearray()
 
-            while True:
-                # buffer to 1 MB in order to not overload the event loop
-                chunk = read_chunk(body_iterable, 1024 * 1024)
-                if not chunk:
-                    break
-                asyncio.run_coroutine_threadsafe(self._response.write(chunk), loop).result()
+            self.write(chunks)
         finally:
             if hasattr(body_iterable, "close"):
                 body_iterable.close()
 
-            asyncio.run_coroutine_threadsafe(self._response.write_eof(), loop).result()
+            self.write_eof()
 
         return self._response
 
@@ -171,11 +163,11 @@ class WSGIBodyReader:
         self._loop = loop
 
     def read(self, size=None):
-        try:
-            if size:
-                return asyncio.run_coroutine_threadsafe(self._request.content.readexactly(size), self._loop).result()
-
+        if not size:
             return asyncio.run_coroutine_threadsafe(self._request.content.read(), self._loop).result()
+
+        try:
+            return asyncio.run_coroutine_threadsafe(self._request.content.readexactly(size), self._loop).result()
         except asyncio.IncompleteReadError as e:
             return e.partial
 
@@ -199,6 +191,7 @@ class WSGIHandler:
     :param io.BytesIO stderr: {stderr}
     :param concurrent.futures.Executor executor: {executor}
     :param loop: {loop}
+    :param int buffer_size: {buffer_size}
     """
 
     def __init__(
@@ -210,13 +203,18 @@ class WSGIHandler:
         stderr=None,
         # asyncio config.
         executor=None,
-        loop=None
+        loop=None,
+        buffer_size=1024 * 1024
     ):
         assert callable(application), "application should be callable"
         self._application = application
         # Handler config.
         self._url_scheme = url_scheme
         self._stderr = stderr or sys.stderr
+
+        assert isinstance(buffer_size, int), "buffer_size should be int"
+        self._buffer_size = buffer_size
+
         # asyncio config.
         self._executor = executor
         self._loop = loop or asyncio.get_event_loop()
@@ -283,7 +281,8 @@ class WSGIHandler:
         body = WSGIBodyReader(request, self._loop)
         environ = self._get_environ(request, body)
         return await self._loop.run_in_executor(
-            self._executor, WSGIRequest().run_application, self._application, request, environ, self._loop
+            self._executor, WSGIRequest(request, self._loop).run_application,
+            self._application, environ, self._buffer_size
         )
 
     __call__ = handle_request
@@ -463,8 +462,7 @@ HELP = {
     "shutdown_timeout": (
         "Timeout when closing client connections on server shutdown. Defaults to ``{shutdown_timeout!r}``."
     ).format_map(DEFAULTS),
-    "size_limit": "Size limit in bytes",
-    "body_iterable": "A generator containing the body data returned from the WSGI request"
+    "buffer_size": "Buffer size for large requests. Defaults to ``{{buffer_size}}``".format_map(DEFAULTS),
 }
 
 WSGIHandler.__doc__ = WSGIHandler.__doc__.format_map(HELP)
