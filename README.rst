@@ -3,6 +3,8 @@ aiohttp-wsgi
 
 WSGI adapter for `aiohttp <http://aiohttp.readthedocs.io/en/stable/web.html>`_.
 
+**aiottp-wsgi** is actively maintained and used in prodution, with any bug reports or feature requests answered promptly. It's a small, stable library, so can go a long time without new releases or updates!
+
 .. image:: https://travis-ci.org/etianen/aiohttp-wsgi.svg?branch=master
     :target: https://travis-ci.org/etianen/aiohttp-wsgi
 
