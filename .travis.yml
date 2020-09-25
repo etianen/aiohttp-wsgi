@@ -15,6 +15,8 @@ matrix:
   fast_finish: true
   include:
     - { python: "3.7", dist: xenial, sudo: true }
+  arch: AMD64
+    - { python: "3.7", dist: xenial, sudo: true }
 install:
   - pip install flake8 coverage sphinx -e .
 script:
