@@ -26,6 +26,8 @@ jobs:
     - name: Test with unittest
       run: |
         coverage run -m unittest discover tests
+        # Since we generate dynamic docstrings, ensure nothing crashes when they're stripped out in optimize mode.
+        PYTHONOPTIMIZE=2 coverage run -m unittest discover tests
         coverage report --fail-under=100
     - name: Build docs
       run: |
