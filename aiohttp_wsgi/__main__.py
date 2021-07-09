@@ -40,7 +40,6 @@ import argparse
 import logging
 import os
 import sys
-import textwrap
 from importlib import import_module
 import aiohttp_wsgi
 from aiohttp_wsgi.wsgi import serve, DEFAULTS, HELP
@@ -178,4 +177,6 @@ def main():
     serve(application, static=static, **kwargs)
 
 
-__doc__ = __doc__.format(help=textwrap.indent(parser.format_help(), "    "), **HELP)
+if __debug__:
+    import textwrap
+    __doc__ = __doc__.format(help=textwrap.indent(parser.format_help(), "    "), **HELP)

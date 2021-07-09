@@ -462,6 +462,7 @@ HELP = {
     ).format_map(DEFAULTS),
 }
 
-WSGIHandler.__doc__ = WSGIHandler.__doc__.format_map(HELP)
 
-serve.__doc__ = serve.__doc__.format_map(HELP)
+if __debug__:
+    WSGIHandler.__doc__ = WSGIHandler.__doc__.format_map(HELP)
+    serve.__doc__ = serve.__doc__.format_map(HELP)
