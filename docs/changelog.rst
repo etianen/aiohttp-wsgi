@@ -4,6 +4,12 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.9.1
+-----
+
+- **Bugfix:** Added in ``py.typed`` PEP 561 marker file.
+
+
 0.9.0
 -----
 
