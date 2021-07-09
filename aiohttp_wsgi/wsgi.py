@@ -88,6 +88,8 @@ API reference
 .. include:: /_include/links.rst
 """
 import asyncio
+from functools import partial
+from io import BytesIO
 import logging
 import os
 import sys
@@ -194,9 +196,13 @@ class WSGIHandler:
         self._stderr = stderr or sys.stderr
         assert isinstance(inbuf_overflow, int), "inbuf_overflow should be int"
         assert inbuf_overflow >= 0, "inbuf_overflow should be >= 0"
-        self._inbuf_overflow = inbuf_overflow
         assert isinstance(max_request_body_size, int), "max_request_body_size should be int"
         assert max_request_body_size >= 0, "max_request_body_size should be >= 0"
+        if inbuf_overflow < max_request_body_size:
+            self._body_io: Callable[[], IO[bytes]] = partial(SpooledTemporaryFile, max_size=inbuf_overflow)
+        else:
+            # Use BytesIO as an optimization if we'll never overflow to disk.
+            self._body_io = BytesIO
         self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
@@ -270,7 +276,7 @@ class WSGIHandler:
             )
         # Buffer the body.
         content_length = 0
-        with SpooledTemporaryFile(max_size=self._inbuf_overflow) as body:
+        with self._body_io() as body:
             while True:
                 block = await request.content.readany()
                 if not block:
