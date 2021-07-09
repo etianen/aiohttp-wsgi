@@ -35,7 +35,6 @@ You can view this reference at any time with ``aiohttp-wsgi-serve --help``.
 
 .. include:: /_include/links.rst
 """
-from __future__ import annotations
 import argparse
 import logging
 import os

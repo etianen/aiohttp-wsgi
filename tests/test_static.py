@@ -1,4 +1,3 @@
-from __future__ import annotations
 import os
 from tests.base import AsyncTestCase, noop_application
 

@@ -1,4 +1,3 @@
-from __future__ import annotations
 import unittest
 from collections import namedtuple
 from contextlib import contextmanager

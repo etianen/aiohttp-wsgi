@@ -1,4 +1,3 @@
-from __future__ import annotations
 from tests.base import AsyncTestCase, streaming_request_body, noop_application
 
 

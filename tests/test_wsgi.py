@@ -1,4 +1,3 @@
-from __future__ import annotations
 from wsgiref.validate import validator
 from tests.base import AsyncTestCase, noop_application
 

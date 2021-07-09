@@ -87,7 +87,6 @@ API reference
 
 .. include:: /_include/links.rst
 """
-from __future__ import annotations
 import asyncio
 import logging
 import os
@@ -126,7 +125,7 @@ def _run_application(application: WSGIApplication, environ: WSGIEnviron) -> Resp
     response_status: Optional[int] = None
     response_reason: Optional[str] = None
     response_headers: Optional[WSGIHeaders] = None
-    response_body: list[bytes] = []
+    response_body: List[bytes] = []
     # Simple start_response callable.
     def start_response(status: str, headers: WSGIHeaders, exc_info: Optional[Exception] = None) -> WSGIAppendResponse:
         nonlocal response_status, response_reason, response_headers, response_body

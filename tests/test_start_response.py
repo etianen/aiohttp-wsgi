@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import Iterable
 from tests.base import AsyncTestCase
 from aiohttp_wsgi.wsgi import WSGIEnviron, WSGIStartResponse
