@@ -158,7 +158,7 @@ def import_func(func: str) -> Callable:
 
 
 def parse_static_item(static_item: str) -> Tuple[str, str]:
-    assert "=" in static_item, "{!r} should have format 'path=directory'"
+    assert "=" in static_item, f"{static_item!r} should have format 'path=directory'"
     return tuple(static_item.split("=", 1))  # type: ignore
 
 

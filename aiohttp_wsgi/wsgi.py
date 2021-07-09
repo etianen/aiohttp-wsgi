@@ -303,13 +303,13 @@ def format_path(path: str) -> str:
     return path
 
 
-_Handler = Callable[[Request], Awaitable[StreamResponse]]
-_Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
+Handler = Callable[[Request], Awaitable[StreamResponse]]
+Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
 
 
-def static_cors_middleware(*, static: Iterable[Tuple[str, str]], static_cors: str) -> _Middleware:
+def static_cors_middleware(*, static: Iterable[Tuple[str, str]], static_cors: str) -> Middleware:
     @middleware
-    async def do_static_cors_middleware(request: Request, handler: _Handler) -> StreamResponse:
+    async def do_static_cors_middleware(request: Request, handler: Handler) -> StreamResponse:
         response = await handler(request)
         for path, _ in static:
             if request.path.startswith(path):
