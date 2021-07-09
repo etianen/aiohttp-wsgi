@@ -11,6 +11,7 @@ setup(
     author_email="dave@etianen.com",
     url="https://github.com/etianen/aiohttp-wsgi",
     packages=find_packages(exclude=("tests",)),
+    package_data={"aiohttp_wsgi": ["py.typed"]},
     install_requires=[
         "aiohttp>=3.4,<4",
     ],
