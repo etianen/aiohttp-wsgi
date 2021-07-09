@@ -4,6 +4,13 @@ aiohttp-wsgi changelog
 .. currentmodule:: aiohttp_wsgi
 
 
+0.9.0
+-----
+
+- Added PEP 561 type information.
+- **Bugfix:** Fixed crash when running with ``PYTHONOPTIMIZE=2``.
+
+
 0.8.2
 -----
 
