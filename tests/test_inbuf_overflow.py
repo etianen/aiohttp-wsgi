@@ -1,14 +1,15 @@
+from __future__ import annotations
 from tests.base import AsyncTestCase, streaming_request_body, echo_application
 
 
 class InbufOverflowTest(AsyncTestCase):
 
-    def testInbufOverflow(self):
+    def testInbufOverflow(self) -> None:
         with self.run_server(echo_application, inbuf_overflow=3) as client:
             response = client.request(data="foobar")
             self.assertEqual(response.content, b"foobar")
 
-    def testInbufOverflowStreaming(self):
+    def testInbufOverflowStreaming(self) -> None:
         with self.run_server(echo_application, inbuf_overflow=20) as client:
             response = client.request(data=streaming_request_body())
             self.assertEqual(response.content, b"foobar" * 100)

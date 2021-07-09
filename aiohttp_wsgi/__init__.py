@@ -44,6 +44,7 @@ More information
 
 .. include:: /_include/links.rst
 """
+from __future__ import annotations
 
 try:
     import aiohttp  # noqa

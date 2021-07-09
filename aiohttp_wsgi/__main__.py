@@ -35,12 +35,13 @@ You can view this reference at any time with ``aiohttp-wsgi-serve --help``.
 
 .. include:: /_include/links.rst
 """
-
+from __future__ import annotations
 import argparse
 import logging
 import os
 import sys
 from importlib import import_module
+from typing import Any, Callable, Tuple
 import aiohttp_wsgi
 from aiohttp_wsgi.wsgi import serve, DEFAULTS, HELP
 
@@ -54,7 +55,7 @@ parser = argparse.ArgumentParser(
 )
 
 
-def add_argument(name, *aliases, **kwargs):
+def add_argument(name: str, *aliases: str, **kwargs: Any) -> None:
     varname = name.strip("-").replace("-", "_")
     # Format help.
     kwargs.setdefault("help", HELP.get(varname, "").replace("``", ""))
@@ -145,24 +146,24 @@ add_argument(
     "--version",
     action="version",
     help="Display version information.",
-    version="aiohttp-wsgi v{}".format(aiohttp_wsgi.__version__),
+    version=f"aiohttp-wsgi v{aiohttp_wsgi.__version__}",
 )
 
 
-def import_func(func):
-    assert ":" in func, "{!r} should have format 'module:callable'".format(func)
+def import_func(func: str) -> Callable:
+    assert ":" in func, f"{func!r} should have format 'module:callable'"
     module_name, func_name = func.split(":", 1)
     module = import_module(module_name)
     func = getattr(module, func_name)
     return func
 
 
-def parse_static_item(static_item):
+def parse_static_item(static_item: str) -> Tuple[str, str]:
     assert "=" in static_item, "{!r} should have format 'path=directory'"
-    return static_item.split("=", 1)
+    return tuple(static_item.split("=", 1))  # type: ignore
 
 
-def main():
+def main() -> None:
     sys.path.insert(0, os.getcwd())
     # Parse the args.
     kwargs = vars(parser.parse_args(sys.argv[1:]))
