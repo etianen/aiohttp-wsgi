@@ -18,7 +18,6 @@ Resources
 
 -   `Documentation`_ is on Read the Docs.
 -   `Issue tracking`_ and `source code`_ is on GitHub.
--   `Continuous integration`_ is on Travis CI.
 
 
 Usage

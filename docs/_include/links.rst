@@ -1,4 +1,3 @@
-.. _continuous integration: https://travis-ci.org/etianen/aiohttp-wsgi
 .. _contributors: https://github.com/etianen/aiohttp-wsgi/graphs/contributors
 .. _documentation: https://aiohttp-wsgi.readthedocs.io/
 .. _Dave Hall: http://etianen.com/
