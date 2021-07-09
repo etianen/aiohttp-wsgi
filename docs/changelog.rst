@@ -7,7 +7,7 @@ aiohttp-wsgi changelog
 0.9.0
 -----
 
-- Added PEP 561 type information.
+- Added PEP 484 / PEP 561 type annotations.
 - **Bugfix:** Fixed crash when running with ``PYTHONOPTIMIZE=2``.
 
 
