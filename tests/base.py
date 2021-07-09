@@ -60,16 +60,18 @@ class AsyncTestCase(unittest.TestCase):
     def _run_server(self, *args, **kwargs):
         with run_server(*args, **kwargs) as (loop, site):
             host, port = parse_sockname(site._server.sockets[0].getsockname())
-            if host == "unix":
-                connector = aiohttp.UnixConnector(path=port, loop=loop)
-            else:
-                connector = aiohttp.TCPConnector(loop=loop)
-            session = aiohttp.ClientSession(connector=connector, loop=loop)
+
+            async def create_session() -> aiohttp.ClientSession:
+                if host == "unix":
+                    connector = aiohttp.UnixConnector(path=port)
+                else:
+                    connector = aiohttp.TCPConnector()
+                return aiohttp.ClientSession(connector=connector)
+            session = loop.run_until_complete(create_session())
             try:
                 yield TestClient(self, loop, host, port, session)
             finally:
                 loop.run_until_complete(session.close())
-                connector.close()
 
     def run_server(self, *args, **kwargs):
         return self._run_server(
