@@ -93,6 +93,7 @@ from io import BytesIO
 import logging
 import os
 import sys
+import urllib.parse
 from concurrent.futures import Executor, ThreadPoolExecutor
 from contextlib import contextmanager
 from tempfile import SpooledTemporaryFile
@@ -238,7 +239,8 @@ class WSGIHandler:
             # RAW_URI: Gunicorn's non-standard field
             "REQUEST_URI": request.raw_path,
             # REQUEST_URI: uWSGI/Apache mod_wsgi's non-standard field
-            "QUERY_STRING": request.rel_url.raw_query_string,
+            # We cannot use the raw_query_string from yarl, because it isn't raw.
+            "QUERY_STRING": urllib.parse.urlsplit(request.raw_path).query,
             "CONTENT_TYPE": request.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(content_length),
             "SERVER_NAME": server_name,
