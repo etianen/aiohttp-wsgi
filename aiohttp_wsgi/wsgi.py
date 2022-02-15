@@ -206,7 +206,7 @@ class WSGIHandler:
         self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop
 
     def _get_environ(self, request: Request, body: IO[bytes], content_length: int) -> WSGIEnviron:
         # Resolve the path info.
@@ -291,7 +291,8 @@ class WSGIHandler:
             body.seek(0)
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
-            return await self._loop.run_in_executor(
+            loop = self._loop or asyncio.get_event_loop()
+            return await loop.run_in_executor(
                 self._executor,
                 _run_application,
                 self._application,
