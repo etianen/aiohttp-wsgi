@@ -20,7 +20,7 @@ def assert_environ(environ: WSGIEnviron) -> None:
     assert environ["REQUEST_METHOD"] == "GET"
     assert environ["SCRIPT_NAME"] == ""
     assert environ["PATH_INFO"] == "/"
-    assert environ["CONTENT_TYPE"] == ""
+    assert environ["CONTENT_TYPE"] == "application/octet-stream"
     assert environ["CONTENT_LENGTH"] == "0"
     assert environ["SERVER_NAME"] == "127.0.0.1"
     assert int(environ["SERVER_PORT"]) > 0
@@ -97,6 +97,7 @@ class EnvironTest(AsyncTestCase):
     def testEnviron(self) -> None:
         with self.run_server(assert_environ) as client:
             client.assert_response(headers={
+                "Content-Type": "application/octet-stream",
                 "Foo": "bar",
             })
 
