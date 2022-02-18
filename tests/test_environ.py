@@ -35,7 +35,6 @@ def assert_environ(environ: WSGIEnviron) -> None:
     assert environ["wsgi.multithread"]
     assert not environ["wsgi.multiprocess"]
     assert not environ["wsgi.run_once"]
-    assert isinstance(environ["asyncio.loop"], asyncio.BaseEventLoop)
     assert isinstance(environ["asyncio.executor"], ThreadPoolExecutor)
     assert "aiohttp.request" in environ
 
