@@ -1,3 +1,4 @@
+from asyncio.base_events import Server
 import unittest
 from collections import namedtuple
 from contextlib import contextmanager
@@ -68,6 +69,7 @@ class AsyncTestCase(unittest.TestCase):
     def _run_server(self, *args: Any, **kwargs: Any) -> Generator[TestClient, None, None]:
         with run_server(*args, **kwargs) as (loop, site):
             assert site._server is not None
+            assert isinstance(site._server, Server)
             assert site._server.sockets is not None
             host, port = parse_sockname(site._server.sockets[0].getsockname())
             async def create_session() -> aiohttp.ClientSession:

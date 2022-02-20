@@ -85,6 +85,7 @@ API reference
 .. include:: /_include/links.rst
 """
 import asyncio
+from asyncio.base_events import Server
 from functools import partial
 from io import BytesIO
 import logging
@@ -381,6 +382,7 @@ def run_server(
         os.chmod(unix_socket, unix_socket_perms)
     # Report.
     assert site._server is not None
+    assert isinstance(site._server, Server)
     assert site._server.sockets is not None
     server_uri = " ".join(
         "http://{}:{}".format(*parse_sockname(socket.getsockname()))
