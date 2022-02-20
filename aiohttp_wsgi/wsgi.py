@@ -65,9 +65,6 @@ Extra environ keys
 
 :mod:`aiohttp_wsgi` adds the following additional keys to the WSGI environ:
 
-``asyncio.loop``
-    The ``asyncio.EventLoop`` running the server.
-
 ``asyncio.executor``
     The :class:`Executor <concurrent.futures.Executor>` running the WSGI request.
 
@@ -88,6 +85,7 @@ API reference
 .. include:: /_include/links.rst
 """
 import asyncio
+from asyncio.base_events import Server
 from functools import partial
 from io import BytesIO
 import logging
@@ -173,7 +171,6 @@ class WSGIHandler:
     :param int inbuf_overflow: {inbuf_overflow}
     :param int max_request_body_size: {max_request_body_size}
     :param concurrent.futures.Executor executor: {executor}
-    :param loop: {loop}
     """
 
     def __init__(
@@ -187,7 +184,6 @@ class WSGIHandler:
         max_request_body_size: int = 1073741824,
         # asyncio config.
         executor: Optional[Executor] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         assert callable(application), "application should be callable"
         self._application = application
@@ -206,7 +202,6 @@ class WSGIHandler:
         self._max_request_body_size = max_request_body_size
         # asyncio config.
         self._executor = executor
-        self._loop = loop or asyncio.get_event_loop()
 
     def _get_environ(self, request: Request, body: IO[bytes], content_length: int) -> WSGIEnviron:
         # Resolve the path info.
@@ -254,7 +249,6 @@ class WSGIHandler:
             "wsgi.multithread": True,
             "wsgi.multiprocess": False,
             "wsgi.run_once": False,
-            "asyncio.loop": self._loop,
             "asyncio.executor": self._executor,
             "aiohttp.request": request,
         }
@@ -291,7 +285,8 @@ class WSGIHandler:
             body.seek(0)
             # Get the environ.
             environ = self._get_environ(request, body, content_length)
-            return await self._loop.run_in_executor(
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
                 self._executor,
                 _run_application,
                 self._application,
@@ -363,7 +358,6 @@ def run_server(
         f"{format_path(script_name)}{{path_info:.*}}",
         WSGIHandler(
             application,
-            loop=loop,
             executor=executor,
             **kwargs
         ).handle_request,
@@ -388,6 +382,7 @@ def run_server(
         os.chmod(unix_socket, unix_socket_perms)
     # Report.
     assert site._server is not None
+    assert isinstance(site._server, Server)
     assert site._server.sockets is not None
     server_uri = " ".join(
         "http://{}:{}".format(*parse_sockname(socket.getsockname()))
@@ -470,7 +465,6 @@ HELP = {
         "Larger requests will receive a HTTP 413 (Request Entity Too Large) response."
     ).format_map(DEFAULTS),
     "executor": "An Executor instance used to run WSGI requests. Defaults to the :mod:`asyncio` base executor.",
-    "loop": "The asyncio loop. Defaults to :func:`asyncio.get_event_loop`.",
     "host": "Host interfaces to bind. Defaults to ``'0.0.0.0'`` and ``'::'``.",
     "port": "Port to bind. Defaults to ``{port!r}``.".format_map(DEFAULTS),
     "unix_socket": "Path to a unix socket to bind, cannot be used with ``host``.",
