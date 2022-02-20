@@ -3,6 +3,12 @@ aiohttp-wsgi changelog
 
 .. currentmodule:: aiohttp_wsgi
 
+0.10.0
+------
+
+- Removed ``loop`` argument from :class:`WSGIHandler` constructor.
+- Fixed tests to work with aiohttp 3.8.1+.
+
 
 0.9.1
 -----
